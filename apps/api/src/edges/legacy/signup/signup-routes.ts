@@ -5,7 +5,7 @@ import { implement } from '@orpc/server';
 import { signupOrpcContract } from '@yoink/api-contracts/orpc';
 import type { Access } from '../../../access/index.js';
 import type { SignupService } from '../../../access/domain/signup-service.js';
-import type { PasskeyService } from '../../../access/domain/passkey-service.js';
+import type { PasskeyService } from '../../../access/application/handle-passkey.js';
 import type { RegistrationResponseJSON } from '@simplewebauthn/server';
 import type { RateLimitConfig } from '../../../platform/config/schema.js';
 import type { ClientIpOf } from '../../_shared/request-client-ip.js';

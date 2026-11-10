@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { OpenAPIHandler } from '@orpc/openapi/fastify';
 import { implement } from '@orpc/server';
 import { passkeyOrpcContract } from '@yoink/api-contracts/orpc';
-import type { PasskeyService } from '../../../access/domain/passkey-service.js';
+import type { PasskeyService } from '../../../access/application/handle-passkey.js';
 import type { SessionService } from '../../../access/domain/session-service.js';
 import type { RegistrationResponseJSON } from '@simplewebauthn/server';
 import { authenticateTokenWith } from '../../../access/application/authenticate-principal.js';

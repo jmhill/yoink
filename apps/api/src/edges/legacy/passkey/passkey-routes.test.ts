@@ -1,9 +1,11 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
 import cookie from '@fastify/cookie';
 import { registerPasskeyRoutes } from './passkey-routes.js';
-import { createPasskeyService } from '../../../access/domain/passkey-service.js';
+import { createPasskeyService } from '../../../access/application/handle-passkey.js';
+import { createChallengeManager } from '../../../access/domain/challenge.js';
+import { createFakeWebAuthnVerifier } from '../../../access/infrastructure/fake-webauthn-verifier.js';
 import { createSessionService } from '../../../access/domain/session-service.js';
 import { createUserService } from '../../../access/domain/user-service.js';
 import { createMembershipService } from '../../../access/application/handle-membership.js';
@@ -17,32 +19,20 @@ import type { Organization } from '../../../access/domain/organization.js';
 import type { OrganizationMembership } from '../../../access/domain/organization-membership.js';
 import type { UserSession } from '../../../access/domain/user-session.js';
 import type { PasskeyCredential } from '../../../access/domain/passkey-credential.js';
-import type { WebAuthnConfig } from '../../../platform/config/schema.js';
 import {
   createFakeClock,
   createFakeIdGenerator,
 } from '@yoink/infrastructure';
 
-// Mock the simplewebauthn functions
-vi.mock('@simplewebauthn/server', () => ({
-  generateRegistrationOptions: vi.fn(),
-  verifyRegistrationResponse: vi.fn(),
-  generateAuthenticationOptions: vi.fn(),
-  verifyAuthenticationResponse: vi.fn(),
-}));
-
-import {
-  generateRegistrationOptions as mockGenerateRegOpts,
-  verifyRegistrationResponse as mockVerifyReg,
-} from '@simplewebauthn/server';
-
 const USER_SESSION_COOKIE = 'user_session';
+const CHALLENGE_SECRET = 'test-secret-that-is-at-least-32-bytes-long-for-hmac';
 
 describe('passkey routes', () => {
   let app: FastifyInstance;
   let clock: ReturnType<typeof createFakeClock>;
   let credentialStore: ReturnType<typeof createFakePasskeyCredentialStore>;
   let sessionStore: ReturnType<typeof createFakeUserSessionStore>;
+  let verifier: ReturnType<typeof createFakeWebAuthnVerifier>;
 
   const testOrg: Organization = {
     id: '550e8400-e29b-41d4-a716-446655440001',
@@ -86,16 +76,9 @@ describe('passkey routes', () => {
     createdAt: '2024-01-01T00:00:00.000Z',
   };
 
-  const webauthnConfig: WebAuthnConfig = {
-    rpId: 'localhost',
-    rpName: 'Test App',
-    origin: 'http://localhost:3000',
-    challengeSecret: 'test-secret-that-is-at-least-32-bytes-long-for-hmac',
-  };
-
   beforeEach(async () => {
-    vi.resetAllMocks();
     clock = createFakeClock(new Date('2024-06-15T12:00:00.000Z'));
+    verifier = createFakeWebAuthnVerifier();
     const idGenerator = createFakeIdGenerator();
 
     const organizationStore = createFakeOrganizationStore({
@@ -124,8 +107,9 @@ describe('passkey routes', () => {
     const passkeyService = createPasskeyService({
       credentialStore,
       userService,
-      config: webauthnConfig,
       clock,
+      verifier,
+      challenges: createChallengeManager({ secret: CHALLENGE_SECRET, clock }),
     });
 
     const sessionService = createSessionService({
@@ -166,7 +150,7 @@ describe('passkey routes', () => {
         pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
       };
 
-      vi.mocked(mockGenerateRegOpts).mockResolvedValue(mockOptions as any);
+      verifier.setRegistrationOptions(mockOptions);
 
       const response = await app.inject({
         method: 'POST',
@@ -196,7 +180,7 @@ describe('passkey routes', () => {
     it('registers passkey and creates session on success', async () => {
       // Generate options first to get a valid challenge
       const mockOptions = { challenge: 'test-challenge' };
-      vi.mocked(mockGenerateRegOpts).mockResolvedValue(mockOptions as any);
+      verifier.setRegistrationOptions(mockOptions);
 
       const optionsResponse = await app.inject({
         method: 'POST',
@@ -207,19 +191,15 @@ describe('passkey routes', () => {
       const { challenge } = optionsResponse.json();
 
       // Mock successful verification
-      vi.mocked(mockVerifyReg).mockResolvedValue({
+      verifier.setRegistrationVerification({
         verified: true,
-        registrationInfo: {
-          credential: {
-            id: 'new-credential-id',
-            publicKey: new Uint8Array([1, 2, 3]),
-            counter: 0,
-            transports: ['internal'],
-          },
-          credentialDeviceType: 'multiDevice',
-          credentialBackedUp: true,
-        },
-      } as any);
+        id: 'new-credential-id',
+        publicKey: Buffer.from([1, 2, 3]).toString('base64url'),
+        counter: 0,
+        transports: ['internal'],
+        deviceType: 'multiDevice',
+        backedUp: true,
+      });
 
       const response = await app.inject({
         method: 'POST',
@@ -255,7 +235,7 @@ describe('passkey routes', () => {
 
     it('returns 410 for expired challenge', async () => {
       // Generate options
-      vi.mocked(mockGenerateRegOpts).mockResolvedValue({ challenge: 'test' } as any);
+      verifier.setRegistrationOptions({ challenge: 'test' });
       const optionsResponse = await app.inject({
         method: 'POST',
         url: '/api/auth/passkey/register/options',

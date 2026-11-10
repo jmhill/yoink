@@ -9,7 +9,7 @@ import type { InvitationStore } from '../domain/invitation-store.js';
 import type { OrganizationMembershipStore } from '../domain/organization-membership-store.js';
 import type { OrganizationStore } from '../domain/organization-store.js';
 import type { PasskeyCredential } from '../domain/passkey-credential.js';
-import type { VerifyRegistrationParams } from '../domain/passkey-service.js';
+import type { VerifyRegistrationParams } from '../domain/passkey-commands.js';
 import type { SignupPlan } from '../domain/signup-plan.js';
 import type {
   SignupEmailAlreadyRegisteredError,

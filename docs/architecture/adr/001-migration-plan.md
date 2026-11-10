@@ -477,7 +477,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M5.8 Notes settings table and the mirror-bot column
 
-**Execution:** `M5.8a` create, `M5.8b` backfill, `M5.8c` switch (keep today's environment fallback), `M5.8d` drop in a later release. [#254](https://github.com/jmhill/yoink/issues/254), [#255](https://github.com/jmhill/yoink/issues/255), [#256](https://github.com/jmhill/yoink/issues/256), [#257](https://github.com/jmhill/yoink/issues/257).
+**Execution:** `M5.8a` create, `M5.8b` backfill, `M5.8c` switch (keep today's environment fallback), `M5.8d` drop in a later release. [#254](https://github.com/jmhill/yoink/issues/254), [#255](https://github.com/jmhill/yoink/issues/255), [#256](https://github.com/jmhill/yoink/issues/256), [#257](https://github.com/jmhill/yoink/issues/257). `M5.8a` ([#254](https://github.com/jmhill/yoink/issues/254)) is In review. `M5.8b`, `M5.8c`, and `M5.8d` are not.
 
 - **Depends on:** M5.7
 - **Do:** expand/migrate/contract, one step per commit:
@@ -793,7 +793,7 @@ The logical dependencies plus the serialization edges were checked together. The
 | `M5.5` | `M5.1`, `M5.3`, `M4.1b` | — | Done (#373, `8903adaf`, Trunk 42822389879). | `processing/` is `workflows/processing/` with domain, application, policies, and `index.ts`, and no infrastructure. Process queries the inbox capture, prepares a starter, prepares `markProcessed`, and commits once. A captures guard-miss stays `CAPTURE_NOT_IN_INBOX` (task HTTP 400, project HTTP 409). delete-source-capture is registered on the unit of work. Allowlist 28 to 23. API lint 60 to 11 (`boundaries/element-types` 60 to 11). Web stays 32. That PR set the baselines to allowlist 23 and API lint 11. | [#251](https://github.com/jmhill/yoink/issues/251) |
 | `M5.6` | `M5.5` | — | Not started | None. | [#252](https://github.com/jmhill/yoink/issues/252) |
 | `M5.7` | `M5.3` | — | Done (#376, `4ae674c1`, Trunk 42854951002). | Notes live in `modules/notes/`. Create, update, delete, and import commit one notes plan. History writes the timeline from the integration event. Notes SQL names `project_notes`, plus the allowlisted `organizations` mirror-bot read and write until M5.8c. Allowlist 23 to 17. API lint is 10 (`boundaries/element-types`). Web stays 32. The baselines are allowlist 17, API lint 10, and web 32. `app.ts` and `composition-root.ts` changed. | [#253](https://github.com/jmhill/yoink/issues/253) |
-| `M5.8a` | `M5.7`, `M1.3` | — | Not started | None. | [#254](https://github.com/jmhill/yoink/issues/254) |
+| `M5.8a` | `M5.7`, `M1.3` | — | In review. | Notes-owned migration 045 creates empty `notes_settings`: organization id, and the designated mirror-bot user id as an opaque column. The organization foreign key is the identity anchor. The old `organizations.notes_mirror_bot_user_id` column stays the source of truth. No reader or writer switch. `app.ts` and `composition-root.ts` are unchanged. Allowlist stays 17. API lint stays 10. Web stays 32. | [#254](https://github.com/jmhill/yoink/issues/254) |
 | `M5.8b` | `M5.8a` | — | Not started | None. | [#255](https://github.com/jmhill/yoink/issues/255) |
 | `M5.8c` | `M5.8b` | — | Not started | Keep today's resolution order, including the env fallback. Not a product change. | [#256](https://github.com/jmhill/yoink/issues/256) |
 | `M5.8d` | `M5.8c` | — | Not started | Release gate. Drop the column only after M5.8c is in production. Confirm before that PR. | [#257](https://github.com/jmhill/yoink/issues/257) |

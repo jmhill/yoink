@@ -466,7 +466,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M5.7 Notes
 
-**Execution:** `M5.7`. [#253](https://github.com/jmhill/yoink/issues/253). `M5.7` is merged (#376, `4ae674c1`), Trunk pending.
+**Execution:** `M5.7`. [#253](https://github.com/jmhill/yoink/issues/253). `M5.7` is Done (#376, `4ae674c1`, Trunk 42854951002).
 
 - **Depends on:** M5.3
 - **Do:**
@@ -792,7 +792,7 @@ The logical dependencies plus the serialization edges were checked together. The
 | `M5.4` | `M5.3` | — | Done (#375, `300dd1f3`, Trunk 42845309412). #250 is closed. | Get is a query on the task handlers. Pin, unpin, and delete already decide, plan, and commit. Task, project, list, and work store interfaces live under persistence. `domain/services` and `domain/ports` are gone. The domain does not import `edges/_shared/request-validation`. Access admin keeps a two-method project port, so the `ProjectStore` import warning is gone. `app.ts` drops `taskService`. `composition-root.ts` stops constructing it and keeps the processing policies and the signup unit of work. Allowlist stays 23. API lint 11 to 10 (`boundaries/element-types`). Web stays 32. That PR set the baselines to allowlist 23, API lint 10, and web 32. | [#250](https://github.com/jmhill/yoink/issues/250) |
 | `M5.5` | `M5.1`, `M5.3`, `M4.1b` | — | Done (#373, `8903adaf`, Trunk 42822389879). | `processing/` is `workflows/processing/` with domain, application, policies, and `index.ts`, and no infrastructure. Process queries the inbox capture, prepares a starter, prepares `markProcessed`, and commits once. A captures guard-miss stays `CAPTURE_NOT_IN_INBOX` (task HTTP 400, project HTTP 409). delete-source-capture is registered on the unit of work. Allowlist 28 to 23. API lint 60 to 11 (`boundaries/element-types` 60 to 11). Web stays 32. That PR set the baselines to allowlist 23 and API lint 11. | [#251](https://github.com/jmhill/yoink/issues/251) |
 | `M5.6` | `M5.5` | — | Not started | None. | [#252](https://github.com/jmhill/yoink/issues/252) |
-| `M5.7` | `M5.3` | — | merged (#376, `4ae674c1`), Trunk pending. | Notes live in `modules/notes/`. Create, update, delete, and import commit one notes plan. History writes the timeline from the integration event. Notes SQL names `project_notes`, plus the allowlisted `organizations` mirror-bot read and write until M5.8c. Allowlist 23 to 17. API lint is 10 (`boundaries/element-types`). Web stays 32. The baselines are allowlist 17, API lint 10, and web 32. `app.ts` and `composition-root.ts` changed. | [#253](https://github.com/jmhill/yoink/issues/253) |
+| `M5.7` | `M5.3` | — | Done (#376, `4ae674c1`, Trunk 42854951002). | Notes live in `modules/notes/`. Create, update, delete, and import commit one notes plan. History writes the timeline from the integration event. Notes SQL names `project_notes`, plus the allowlisted `organizations` mirror-bot read and write until M5.8c. Allowlist 23 to 17. API lint is 10 (`boundaries/element-types`). Web stays 32. The baselines are allowlist 17, API lint 10, and web 32. `app.ts` and `composition-root.ts` changed. | [#253](https://github.com/jmhill/yoink/issues/253) |
 | `M5.8a` | `M5.7`, `M1.3` | — | Not started | None. | [#254](https://github.com/jmhill/yoink/issues/254) |
 | `M5.8b` | `M5.8a` | — | Not started | None. | [#255](https://github.com/jmhill/yoink/issues/255) |
 | `M5.8c` | `M5.8b` | — | Not started | Keep today's resolution order, including the env fallback. Not a product change. | [#256](https://github.com/jmhill/yoink/issues/256) |

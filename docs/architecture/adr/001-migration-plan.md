@@ -442,7 +442,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M5.5 Processing workflow and delete-source-capture policy
 
-**Execution:** `M5.5`. [#251](https://github.com/jmhill/yoink/issues/251). `M5.5` is merged (#373, `8903adaf`), Trunk pending.
+**Execution:** `M5.5`. [#251](https://github.com/jmhill/yoink/issues/251). `M5.5` is Done (#373, `8903adaf`, Trunk 42822389879).
 
 - **Depends on:** M5.1, M5.3, M4.1b
 - **Do:**
@@ -790,7 +790,7 @@ The logical dependencies plus the serialization edges were checked together. The
 | `M5.2` | `M5.1`, `CL-WORK` | — | Done (#352, `4c4b28bb`, Trunk [42701505987](https://github.com/jmhill/yoink/actions/runs/42701505987)) | Tasks, projects, lists, and the Now, due, and work-list queries live in `modules/task-management/`. `work/` is gone. `/api/work/*` stays on the public API edge. `composition-root.ts` and `app.ts` changed only to import the new entry. Allowlist 33 to 29. Lint 150 to 93 (`boundaries/element-types` 117 to 60, `@typescript-eslint/no-explicit-any` 33). | [#248](https://github.com/jmhill/yoink/issues/248) |
 | `M5.3` | `M5.2`, `M4.1b` | — | Done (#361, `954619ed`, Trunk [42731265947](https://github.com/jmhill/yoink/actions/runs/42731265947)). | Task, project, list, and import writes, including project-done for 1,000 open tasks, commit through the shared unit of work. `prepare.createTask` and `prepare.createProject` are published. `TaskDeleted` `source` is on the integration event; the timeline payload stays `{ captureId }`. The assignee port stays `OrgPrincipalLookup`. Allowlist 29 to 28: removed `FROM change_log` in `project-store-backed-persist.ts`. Lint unchanged at 93 (`boundaries/element-types` 60, `@typescript-eslint/no-explicit-any` 33). | [#249](https://github.com/jmhill/yoink/issues/249) |
 | `M5.4` | `M5.3` | — | Not started | None. | [#250](https://github.com/jmhill/yoink/issues/250) |
-| `M5.5` | `M5.1`, `M5.3`, `M4.1b` | — | merged (#373, `8903adaf`), Trunk pending. | `processing/` is `workflows/processing/` with domain, application, policies, and `index.ts`, and no infrastructure. Process queries the inbox capture, prepares a starter, prepares `markProcessed`, and commits once. A captures guard-miss stays `CAPTURE_NOT_IN_INBOX` (task HTTP 400, project HTTP 409). delete-source-capture is registered on the unit of work. Allowlist 28 to 23. API lint 60 to 11 (`boundaries/element-types` 60 to 11). Web stays 32. The baselines are allowlist 23 and API lint 11. | [#251](https://github.com/jmhill/yoink/issues/251) |
+| `M5.5` | `M5.1`, `M5.3`, `M4.1b` | — | Done (#373, `8903adaf`, Trunk 42822389879). | `processing/` is `workflows/processing/` with domain, application, policies, and `index.ts`, and no infrastructure. Process queries the inbox capture, prepares a starter, prepares `markProcessed`, and commits once. A captures guard-miss stays `CAPTURE_NOT_IN_INBOX` (task HTTP 400, project HTTP 409). delete-source-capture is registered on the unit of work. Allowlist 28 to 23. API lint 60 to 11 (`boundaries/element-types` 60 to 11). Web stays 32. The baselines are allowlist 23 and API lint 11. | [#251](https://github.com/jmhill/yoink/issues/251) |
 | `M5.6` | `M5.5` | — | Not started | None. | [#252](https://github.com/jmhill/yoink/issues/252) |
 | `M5.7` | `M5.3` | — | Not started | None. | [#253](https://github.com/jmhill/yoink/issues/253) |
 | `M5.8a` | `M5.7`, `M1.3` | — | Not started | None. | [#254](https://github.com/jmhill/yoink/issues/254) |

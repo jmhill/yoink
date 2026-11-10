@@ -145,6 +145,22 @@ const databaseFrom = (
       return results.map((result) => mapResult(result));
     }),
 
+  migrate: (queries): Promise<QueryResult[]> =>
+    gate.exclusive(async () => {
+      await before?.();
+      const results = await call(
+        () =>
+          client.migrate(
+            queries.map((q) => ({
+              sql: q.sql,
+              args: (q.args ?? []) as InValue[],
+            }))
+          ),
+        false
+      );
+      return results.map((result) => mapResult(result));
+    }),
+
   close: () =>
     gate.exclusive(async () => {
       client.close();
@@ -308,6 +324,7 @@ export const openDatabase = (
     database: {
       execute: database.execute,
       batch: database.batch,
+      migrate: database.migrate,
       close: async () => {
         await database.close();
         const release = await writeGate.acquire();

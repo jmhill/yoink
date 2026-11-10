@@ -35,6 +35,15 @@ export type Database = {
   ) => Promise<QueryResult[]>;
 
   /**
+   * One Turso request: foreign keys off, then these statements, then foreign keys on.
+   * `batch` cannot do that. Its transaction starts before any statement, and
+   * `PRAGMA foreign_keys` is a no-op inside a transaction. A separate
+   * `execute('PRAGMA foreign_keys = OFF')` is a different HTTP request and
+   * does not apply to the next one.
+   */
+  migrate?: (queries: { sql: string; args?: unknown[] }[]) => Promise<QueryResult[]>;
+
+  /**
    * Close the database connection.
    */
   close: () => Promise<void>;

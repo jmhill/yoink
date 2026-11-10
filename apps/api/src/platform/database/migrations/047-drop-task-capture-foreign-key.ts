@@ -6,6 +6,11 @@ import { rebuildTable } from '../table-rebuild.js';
  * migration 011 is gone. `idx_tasks_capture` stays. List and project foreign
  * keys stay inside task-management. Organization and user foreign keys stay
  * identity anchors.
+ *
+ * `projects.next_action_task_id` references `tasks`. Dropping `tasks` with
+ * foreign keys on fails that constraint. `rebuildTable` runs the drop through
+ * `Database.migrate`, which turns foreign keys off for that one request, then
+ * checks `PRAGMA foreign_key_check` before commit.
  */
 export const migration: Migration = {
   version: 47,

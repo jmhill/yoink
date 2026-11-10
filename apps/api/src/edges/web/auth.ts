@@ -11,7 +11,7 @@ import type { MembershipService } from '../../access/application/handle-membersh
 import type { OrganizationService } from '../../access/application/handle-organization.js';
 import type { OrganizationStore } from '../../access/domain/organization-store.js';
 import type { PasskeyService } from '../../access/application/handle-passkey.js';
-import type { SessionService } from '../../access/domain/session-service.js';
+import type { SessionService } from '../../access/application/handle-session.js';
 import type { SignupService } from '../../access/domain/signup-service.js';
 import type { UserService } from '../../access/domain/user-service.js';
 import type { ClientIpOf } from '../_shared/request-client-ip.js';

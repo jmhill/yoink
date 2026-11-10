@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createFakeClock, createFakeIdGenerator } from '@yoink/infrastructure';
-import { createSessionService, type SessionService } from './session-service.js';
-import { createMembershipService, type MembershipService } from '../application/handle-membership.js';
-import { createUserService, type UserService } from './user-service.js';
-import type { UserSessionStore } from './user-session-store.js';
-import type { User } from './user.js';
-import type { OrganizationMembership } from './organization-membership.js';
+import { createSessionService, type SessionService } from './handle-session.js';
+import { createMembershipService, type MembershipService } from './handle-membership.js';
+import { createUserService, type UserService } from '../domain/user-service.js';
+import type { UserSessionStore } from '../domain/user-session-store.js';
+import type { User } from '../domain/user.js';
+import type { OrganizationMembership } from '../domain/organization-membership.js';
 import { createFakeUserSessionStore } from '../infrastructure/fake-user-session-store.js';
 import { createFakeUserStore } from '../infrastructure/fake-user-store.js';
 import { createFakeOrganizationMembershipStore } from '../infrastructure/fake-organization-membership-store.js';

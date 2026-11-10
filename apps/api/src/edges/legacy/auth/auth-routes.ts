@@ -5,7 +5,7 @@ import { implement } from '@orpc/server';
 import { authOrpcContract } from '@yoink/api-contracts/orpc';
 import type { AuthenticationResponseJSON } from '@simplewebauthn/server';
 import type { PasskeyService } from '../../../access/application/handle-passkey.js';
-import type { SessionService } from '../../../access/domain/session-service.js';
+import type { SessionService } from '../../../access/application/handle-session.js';
 import type { UserService } from '../../../access/domain/user-service.js';
 import type { MembershipService } from '../../../access/application/handle-membership.js';
 import type { OrganizationStore } from '../../../access/domain/organization-store.js';

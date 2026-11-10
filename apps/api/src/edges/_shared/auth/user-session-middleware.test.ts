@@ -6,7 +6,7 @@ import {
   createUserSessionMiddleware,
   USER_SESSION_COOKIE,
 } from './user-session-middleware.js';
-import { createSessionService, type SessionService } from '../../../access/domain/session-service.js';
+import { createSessionService, type SessionService } from '../../../access/application/handle-session.js';
 import { createMembershipService } from '../../../access/application/handle-membership.js';
 import { createUserService } from '../../../access/domain/user-service.js';
 import { createFakeUserSessionStore } from '../../../access/infrastructure/fake-user-session-store.js';

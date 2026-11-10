@@ -37,4 +37,10 @@ export type UserSessionStore = {
 
   /** Delete expired sessions (cleanup) */
   deleteExpired(now: string): ResultAsync<number, SessionStorageError>;
+
+  /**
+   * Count sessions whose expiry is before `now`. Cleanup reads this, then
+   * deletes. The unit of work commit does not return `rowsAffected`.
+   */
+  countExpired(now: string): ResultAsync<number, SessionStorageError>;
 };

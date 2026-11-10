@@ -28,7 +28,7 @@ export {
 
 // Authentication services
 export { createTokenService, type TokenService } from './token-service.js';
-export { createSessionService, type SessionService } from './session-service.js';
+export { createSessionService, type SessionService } from '../application/handle-session.js';
 export { createPasskeyService, type PasskeyService } from '../application/handle-passkey.js';
 export { createSignupService, type SignupService } from './signup-service.js';
 

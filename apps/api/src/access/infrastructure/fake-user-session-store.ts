@@ -116,5 +116,19 @@ export const createFakeUserSessionStore = (
       }
       return okAsync(deletedCount);
     },
+
+    countExpired: (now: string): ResultAsync<number, SessionStorageError> => {
+      if (options.shouldFailOnFind) {
+        return errAsync(sessionStorageError('Find failed'));
+      }
+      const nowDate = new Date(now);
+      let expiredCount = 0;
+      for (const session of sessions) {
+        if (new Date(session.expiresAt) < nowDate) {
+          expiredCount++;
+        }
+      }
+      return okAsync(expiredCount);
+    },
   };
 };

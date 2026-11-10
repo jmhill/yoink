@@ -378,6 +378,8 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
       unitOfWork,
     });
 
+    // Create, refresh, revoke, switch, and cleanup decide, then commit one
+    // access plan. Validate stays a read. The edge still sets the cookie.
     const sessionService = createSessionService({
       sessionStore: userSessionStore,
       userService,
@@ -386,6 +388,7 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
       idGenerator,
       sessionTtlMs: 7 * 24 * 60 * 60 * 1000, // 7 days
       refreshThresholdMs: 24 * 60 * 60 * 1000, // 1 day
+      unitOfWork,
     });
 
     const signupService = createSignupService({

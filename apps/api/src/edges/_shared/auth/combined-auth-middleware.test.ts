@@ -7,7 +7,7 @@ import { AUTH_TRY_AGAIN_MESSAGE } from './token-validation-response.js';
 import { combinedAuthFromServices } from './auth-from-services.js';
 import { createCombinedAuthMiddleware, USER_SESSION_COOKIE } from './combined-auth-middleware.js';
 import { createTokenService } from '../../../access/domain/token-service.js';
-import { createSessionService } from '../../../access/domain/session-service.js';
+import { createSessionService } from '../../../access/application/handle-session.js';
 import type { Organization } from '../../../access/domain/organization.js';
 import { createFakeOrganizationStore } from '../../../access/infrastructure/fake-organization-store.js';
 import type { User } from '../../../access/domain/user.js';

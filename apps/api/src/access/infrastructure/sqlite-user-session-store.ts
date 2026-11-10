@@ -148,5 +148,18 @@ export const createSqliteUserSessionStore = async (
         (error) => sessionStorageError('Failed to delete expired sessions', error)
       ).map((result) => result.rowsAffected);
     },
+
+    countExpired: (now: string): ResultAsync<number, SessionStorageError> => {
+      return ResultAsync.fromPromise(
+        db.execute({
+          sql: `SELECT COUNT(*) AS expired_count FROM user_sessions WHERE expires_at < ?`,
+          args: [now],
+        }),
+        (error) => sessionStorageError('Failed to count expired sessions', error)
+      ).map((result) => {
+        const row = result.rows[0] as { expired_count: number | bigint } | undefined;
+        return Number(row?.expired_count ?? 0);
+      });
+    },
   };
 };

@@ -1,6 +1,6 @@
 import { okAsync } from 'neverthrow';
 import { actorFromSession, actorFromToken } from '../../kernel/auth-context.js';
-import type { SessionService } from '../domain/session-service.js';
+import type { SessionService } from './handle-session.js';
 import type { AuthResult, TokenService } from '../domain/token-service.js';
 import { principalKindOf } from '../domain/user.js';
 import type {

@@ -6,7 +6,7 @@ import type { UnitOfWork } from '../../kernel/unit-of-work.js';
 import type { InvitationStore } from '../domain/invitation-store.js';
 import type { OrganizationMembershipStore } from '../domain/organization-membership-store.js';
 import type { OrganizationStore } from '../domain/organization-store.js';
-import type { SessionService } from '../domain/session-service.js';
+import type { SessionService } from './handle-session.js';
 import type { TokenService } from '../domain/token-service.js';
 import type { UserStore } from '../domain/user-store.js';
 import type {

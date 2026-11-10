@@ -13,7 +13,7 @@ import type { OrganizationMembership } from '../access/domain/organization-membe
 import type { Organization } from '../access/domain/organization.js';
 import { createMembershipService } from '../access/application/handle-membership.js';
 import type { AuthenticationOptions } from '../access/application/handle-passkey.js';
-import { createSessionService } from '../access/domain/session-service.js';
+import { createSessionService } from '../access/application/handle-session.js';
 import { createTokenService } from '../access/domain/token-service.js';
 import type { UserSession } from '../access/domain/user-session.js';
 import type { User } from '../access/domain/user.js';

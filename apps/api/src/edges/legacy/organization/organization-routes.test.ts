@@ -4,7 +4,7 @@ import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
 import cookie from '@fastify/cookie';
 import { registerOrganizationRoutes } from './organization-routes.js';
-import { createSessionService } from '../../../access/domain/session-service.js';
+import { createSessionService } from '../../../access/application/handle-session.js';
 import { createUserService } from '../../../access/domain/user-service.js';
 import { createMembershipService } from '../../../access/application/handle-membership.js';
 import { createAgentService } from '../../../access/application/handle-agent.js';

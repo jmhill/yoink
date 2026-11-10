@@ -9,7 +9,7 @@ import {
   createStoreBackedTokenCreated,
   createStoreBackedTokenRevoked,
 } from '../../../access/infrastructure/store-backed-token-persist.js';
-import { createSessionService } from '../../../access/domain/session-service.js';
+import { createSessionService } from '../../../access/application/handle-session.js';
 import { createTokenService } from '../../../access/domain/token-service.js';
 import { createUserService } from '../../../access/domain/user-service.js';
 import { createMembershipService } from '../../../access/application/handle-membership.js';

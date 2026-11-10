@@ -5,6 +5,7 @@ import { isInvitationPlan } from '../../domain/invitation-plan.js';
 import { isMembershipPlan } from '../../domain/membership-plan.js';
 import { isOrganizationPlan } from '../../domain/organization-plan.js';
 import { isPasskeyPlan } from '../../domain/passkey-plan.js';
+import { isSessionPlan } from '../../domain/session-plan.js';
 import { isSignupPlan } from '../../domain/signup-plan.js';
 import { compileAdminPlan } from './compile-admin.js';
 import { compileMintAgentPlan } from './compile-agent.js';
@@ -12,6 +13,7 @@ import { compileInvitationPlan } from './compile-invitation.js';
 import { compileMembershipPlan } from './compile-membership.js';
 import { compileOrganizationPlan } from './compile-organization.js';
 import { compilePasskeyPlan } from './compile-passkey.js';
+import { compileSessionPlan } from './compile-session.js';
 import { compileSignupPlan } from './compile-signup.js';
 
 /** Empty sql is not a write. The unit of work reports Storage and does not run it. */
@@ -45,6 +47,9 @@ export const accessSqlParticipant: SqlParticipant<unknown> = {
     }
     if (isPasskeyPlan(plan)) {
       return compilePasskeyPlan(plan);
+    }
+    if (isSessionPlan(plan)) {
+      return compileSessionPlan(plan);
     }
     return [NOT_A_PLAN];
   },

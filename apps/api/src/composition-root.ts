@@ -344,11 +344,13 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
     unitOfWork,
   });
 
-  // OrganizationService - manages organization CRUD
+  // Create takes the command, decides, and commits one access plan.
+  // Get and list stay reads. notes_mirror_bot_user_id is not written here.
   const organizationService = createOrganizationService({
     organizationStore,
     clock,
     idGenerator,
+    unitOfWork,
   });
 
   // Passkey and session services (for signup flow)

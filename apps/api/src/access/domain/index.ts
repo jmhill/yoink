@@ -20,7 +20,7 @@ export {
 export {
   createOrganizationService,
   type OrganizationService,
-} from './organization-service.js';
+} from '../application/handle-organization.js';
 export {
   createInvitationService,
   type InvitationService,

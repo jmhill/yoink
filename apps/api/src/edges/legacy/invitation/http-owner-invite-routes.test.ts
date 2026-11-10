@@ -44,7 +44,7 @@ import { createAdminService } from '../../../access/application/handle-admin.js'
 import { createInvitationService } from '../../../access/application/handle-invitation.js';
 import { createUserService } from '../../../access/domain/user-service.js';
 import { createMembershipService } from '../../../access/application/handle-membership.js';
-import { createOrganizationService } from '../../../access/domain/organization-service.js';
+import { createOrganizationService } from '../../../access/application/handle-organization.js';
 import { combinedAuthFromServices } from '../../_shared/auth/auth-from-services.js';
 import { createCombinedAuthMiddleware } from '../../_shared/auth/combined-auth-middleware.js';
 import { createFakeOrganizationStore } from '../../../access/infrastructure/fake-organization-store.js';

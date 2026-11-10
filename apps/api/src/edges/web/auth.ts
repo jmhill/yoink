@@ -8,7 +8,7 @@ import type { AcceptInvitation } from '../../access/domain/decide-accept-invitat
 import type { ValidateInvitation } from '../../access/domain/decide-validate-invitation.js';
 import type { Invitation } from '../../access/domain/invitation.js';
 import type { MembershipService } from '../../access/application/handle-membership.js';
-import type { OrganizationService } from '../../access/domain/organization-service.js';
+import type { OrganizationService } from '../../access/application/handle-organization.js';
 import type { OrganizationStore } from '../../access/domain/organization-store.js';
 import type { PasskeyService } from '../../access/domain/passkey-service.js';
 import type { SessionService } from '../../access/domain/session-service.js';

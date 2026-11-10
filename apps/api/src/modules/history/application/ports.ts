@@ -41,6 +41,48 @@ export type PageFinishedTasksInProject = (options: {
   completedBefore?: string;
 }) => ResultAsync<KeysetRows<Task>, StorageError>;
 
+/** Task title and soft-delete flag. Task Management owns the rest of the task. */
+export type TaskSubject = {
+  readonly id: string;
+  readonly title: string;
+  readonly deleted: boolean;
+};
+
+export type LoadTaskSubjects = (
+  ids: readonly string[]
+) => ResultAsync<readonly TaskSubject[], StorageError>;
+
+/** Project name. Task Management owns the rest of the project. */
+export type ProjectName = {
+  readonly id: string;
+  readonly name: string;
+};
+
+export type LoadProjectNames = (
+  ids: readonly string[]
+) => ResultAsync<readonly ProjectName[], StorageError>;
+
+/** Note title and soft-delete flag. Notes owns the rest of the note. */
+export type NoteSubject = {
+  readonly id: string;
+  readonly title: string;
+  readonly deleted: boolean;
+};
+
+export type LoadNoteSubjects = (
+  ids: readonly string[]
+) => ResultAsync<readonly NoteSubject[], StorageError>;
+
+/** Actor display name. Access owns the user. */
+export type ActorName = {
+  readonly id: string;
+  readonly name: string;
+};
+
+export type LoadActorNames = (
+  ids: readonly string[]
+) => ResultAsync<readonly ActorName[], StorageError>;
+
 export type LoadTimelineLookups = (ids: {
   taskIds: readonly string[];
   userIds: readonly string[];

@@ -763,7 +763,7 @@ describe('current tree', () => {
 
   it('passes with the checked-in allowlist and fails closed without it', () => {
     const bare = checkTableOwnership(files, []);
-    expect(TABLE_OWNERSHIP_ALLOWLIST).toHaveLength(6);
+    expect(TABLE_OWNERSHIP_ALLOWLIST).toHaveLength(2);
     expect(TABLE_OWNERSHIP_ALLOWLIST).toHaveLength(bare.violations.length);
     const helperHits = files
       .filter((file) => file.path.startsWith('tests/helpers/'))

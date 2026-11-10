@@ -110,7 +110,7 @@ const edgePackages = [...adapterPackages, '@yoink/api-contracts'];
 const elements = [
   // M4.2 moved history to src/modules/history without the target layer rules.
   // Those rules would warn on imports this code already has. This descriptor
-  // is first, so the current history element wins. M5.10-history removes it.
+  // is first, so the current history element wins. M5.11-history removes it.
   { type: 'history', pattern: 'src/modules/history/**', mode: 'full' },
   // M5.11-captures removed the src/modules/captures/** current element.
   // The folder-mode src/captures/** pattern below stays for boundary fixtures.

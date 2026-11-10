@@ -1,5 +1,4 @@
-import type { FastifyInstance } from 'fastify';
-import rateLimit from '@fastify/rate-limit';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { OpenAPIHandler } from '@orpc/openapi/fastify';
 import { implement } from '@orpc/server';
 import {
@@ -304,6 +303,44 @@ const updateProjectErrorResponse = (error: AdminServiceError) => {
   }
 };
 
+/** Same long labels as `@fastify/rate-limit` (`@lukeed/ms` format). */
+const retryAfterLabel = (ttlInSeconds: number): string => {
+  const ms = ttlInSeconds * 1000;
+  const label = (amount: number, unit: string) =>
+    `${Math.round(amount)} ${unit}${Math.round(amount) === 1 ? '' : 's'}`;
+  if (ms < 1000) return `${ms} ms`;
+  if (ms < 60_000) return label(ms / 1000, 'second');
+  if (ms < 3_600_000) return label(ms / 60_000, 'minute');
+  if (ms < 86_400_000) return label(ms / 3_600_000, 'hour');
+  return label(ms / 86_400_000, 'day');
+};
+
+const sharedAdminLoginLimit = (
+  app: FastifyInstance,
+  rateLimitConfig: RateLimitConfig,
+  clientIpOf: ClientIpOf
+) => {
+  if (!rateLimitConfig.enabled) return undefined;
+  const consume = app.createRateLimit({
+    max: rateLimitConfig.adminLoginMax,
+    timeWindow: rateLimitConfig.adminLoginTimeWindow,
+    keyGenerator: (request) => clientIpOf(request),
+  });
+  return async (request: FastifyRequest, reply: FastifyReply) => {
+    const limit = await consume(request);
+    if (limit.isAllowed) return;
+    reply.header('x-ratelimit-limit', limit.max);
+    reply.header('x-ratelimit-remaining', limit.isExceeded ? 0 : limit.remaining);
+    reply.header('x-ratelimit-reset', limit.ttlInSeconds);
+    if (!limit.isExceeded) return;
+    reply.header('retry-after', limit.ttlInSeconds);
+    throw Object.assign(
+      new Error(`Rate limit exceeded, retry in ${retryAfterLabel(limit.ttlInSeconds)}`),
+      { statusCode: 429 }
+    );
+  };
+};
+
 const adminProtectedValidation = (err: RequestValidationErr) => {
   if (validationIssuePaths(err).includes('ownerEmail')) {
     return {
@@ -331,7 +368,15 @@ export const registerAdminRoutes = async (
     clientIpOf,
   } = deps;
 
-  const mountSurface = async (root: '/api/admin' | '/admin-api', logBuild: boolean) => {
+  // One bucket for both mounts. A limiter inside each mount would let one IP
+  // spend adminLoginMax on `/api/admin/login` and again on `/admin-api/login`.
+  const enforceAdminLoginLimit = sharedAdminLoginLimit(app, rateLimitConfig, clientIpOf);
+
+  const mountSurface = async (
+    root: '/api/admin' | '/admin-api',
+    logBuild: boolean,
+    enforceLoginLimit: typeof enforceAdminLoginLimit
+  ) => {
   const buildLog = logBuild ? { onRequest: adminRequestLog } : {};
   const requireOrganization = async (organizationId: string, storageMessage: string) => {
     const orgResult = await adminService.getOrganization(organizationId);
@@ -658,25 +703,22 @@ export const registerAdminRoutes = async (
     openApiHandlerOptions(adminProtectedValidation)
   );
 
-  await app.register(async (publicApp) => {
-    if (rateLimitConfig.enabled) {
-      await publicApp.register(rateLimit, {
-        max: rateLimitConfig.adminLoginMax,
-        timeWindow: rateLimitConfig.adminLoginTimeWindow,
-        keyGenerator: (request) => clientIpOf(request),
-      });
-    }
+  const publicOnRequest = [
+    ...(logBuild ? [adminRequestLog] : []),
+    ...(enforceLoginLimit ? [enforceLoginLimit] : []),
+  ];
 
+  await app.register(async (publicApp) => {
     publicApp.route({
       method: 'POST',
       url: `${root}/login`,
-      ...buildLog,
+      ...(publicOnRequest.length > 0 ? { onRequest: publicOnRequest } : {}),
       handler: async (request, reply) => dispatchOrpc(publicHandler, request, reply),
     });
     publicApp.route({
       method: 'POST',
       url: `${root}/logout`,
-      ...buildLog,
+      ...(publicOnRequest.length > 0 ? { onRequest: publicOnRequest } : {}),
       handler: async (request, reply) => dispatchOrpc(publicHandler, request, reply),
     });
   });
@@ -716,6 +758,6 @@ export const registerAdminRoutes = async (
   };
 
   // `/api/admin` stays until M6.5. The admin app uses `/admin-api`.
-  await mountSurface('/api/admin', false);
-  await mountSurface('/admin-api', true);
+  await mountSurface('/api/admin', false, enforceAdminLoginLimit);
+  await mountSurface('/admin-api', true, enforceAdminLoginLimit);
 };

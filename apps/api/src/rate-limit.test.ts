@@ -324,6 +324,30 @@ describe('General API rate limit', () => {
     expect((await health(app)).statusCode).toBe(429);
   });
 
+  it('counts /api/admin/login and /admin-api/login against one limit', async () => {
+    app = await startApp(
+      { ...tightUserLimit, globalMax: 100, adminLoginMax: 2 },
+      { viaFly: true }
+    );
+
+    const attempt = (url: string, ip: string) =>
+      app!.inject({
+        method: 'POST',
+        url,
+        headers: { 'fly-client-ip': ip },
+        payload: { password: 'wrong-password' },
+      });
+
+    expect((await attempt('/api/admin/login', '198.51.100.10')).statusCode).toBe(401);
+    expect((await attempt('/api/admin/login', '198.51.100.10')).statusCode).toBe(401);
+
+    const blocked = await attempt('/admin-api/login', '198.51.100.10');
+    expect(blocked.statusCode).toBe(429);
+    expect(blocked.headers['retry-after']).toBeDefined();
+
+    expect((await attempt('/admin-api/login', '198.51.100.20')).statusCode).toBe(401);
+  });
+
   it('keeps the strict admin login limit on the derived IP, not X-Forwarded-For', async () => {
     app = await startApp({ ...tightUserLimit, globalMax: 100 });
 

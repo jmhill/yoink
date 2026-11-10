@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  authWebClient,
   captureClient,
   httpFailureBody,
   httpStatusOf,
@@ -130,6 +131,52 @@ describe('web OpenAPI client', () => {
     expect(calls[1]?.url).toBe('/web-api/organizations/switch');
     expect(calls[1]?.method).toBe('POST');
     expect(calls[2]?.url).toBe(`/api/organizations/${orgId}/members`);
+  });
+
+  it('calls login, session, and passkeys on /web-api and leaves captures on the alias', async () => {
+    const calls: { url: string; method: string; build: string | null; authorization: string | null }[] = [];
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
+      const headers = new Headers(init.headers);
+      calls.push({
+        url,
+        method: init.method ?? 'GET',
+        build: headers.get(YOINK_BUILD_HEADER),
+        authorization: headers.get('Authorization'),
+      });
+      if (url.endsWith('/auth/session')) {
+        return jsonResponse(200, {
+          user: { id: '550e8400-e29b-41d4-a716-446655440002', email: 'test@example.com' },
+          organizationId: '550e8400-e29b-41d4-a716-446655440001',
+          organizations: [],
+        });
+      }
+      if (url.includes('/auth/passkey/credentials')) {
+        return jsonResponse(200, { credentials: [] });
+      }
+      if ((init.method ?? 'GET') === 'POST') {
+        return jsonResponse(200, { options: {}, challenge: 'signed' });
+      }
+      return jsonResponse(200, {
+        captures: [],
+        hasMore: false,
+        nextCursor: null,
+        total: 0,
+      });
+    });
+    localStorage.setItem('yoink_api_token', 'token-id:secret');
+
+    await authWebClient.loginOptions({});
+    await authWebClient.session();
+    await authWebClient.listPasskeys();
+    await captureClient.list({ status: 'inbox', snoozed: false, limit: 1 });
+
+    expect(calls[0]?.url).toBe('/web-api/auth/login/options');
+    expect(calls[0]?.method).toBe('POST');
+    expect(calls[0]?.build).toBe('dev');
+    expect(calls[0]?.authorization).toBe('Bearer token-id:secret');
+    expect(calls[1]?.url).toBe('/web-api/auth/session');
+    expect(calls[2]?.url).toBe('/web-api/auth/passkey/credentials');
+    expect(calls[3]?.url.startsWith('/api/captures?')).toBe(true);
   });
 
   it('accepts a bodyless 204 when deleting a task', async () => {

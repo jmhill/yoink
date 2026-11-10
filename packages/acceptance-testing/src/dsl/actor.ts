@@ -1926,10 +1926,15 @@ export type BrowserActorOperations = {
   shouldKeepInboxOnWebEdgeAndTodayOnApiAlias(): Promise<void>;
 
   /**
-   * Settings members, invitations, and tokens go to `/web-api`.
-   * Passkey credentials stay on `/api`.
+   * Settings members, invitations, tokens, and passkeys go to `/web-api`.
    */
-  shouldKeepSettingsOnWebEdgeAndPasskeysOnApiAlias(): Promise<void>;
+  shouldKeepSettingsOnWebEdge(): Promise<void>;
+
+  /**
+   * Login, signup validation, session, and passkeys go to `/web-api`.
+   * The alias routes stay mounted.
+   */
+  shouldKeepAuthOnWebEdge(): Promise<void>;
 
   /**
    * Assert the Inbox-tab quick-add capture field is not on this pane.

@@ -247,7 +247,17 @@ export const createApp = async (deps: AppDependencies) => {
     captures: deps.captures,
     tokenAuth,
   });
-  // Inbox, and settings when signup exists. Other screens stay on the /api alias.
+  // Session cookie configuration (shared by signup, passkey, and the web auth edge).
+  const sessionCookieName = deps.cookie.sessionName;
+  const cookieOptions = {
+    httpOnly: true,
+    secure: deps.cookie.secure,
+    sameSite: 'strict' as const,
+    path: '/',
+    maxAge: deps.cookie.maxAge,
+  };
+
+  // Inbox, settings, and auth when signup exists. Other screens stay on the /api alias.
   await registerWebApi(app, {
     captures: deps.captures,
     combinedAuth: authMiddleware,
@@ -265,6 +275,25 @@ export const createApp = async (deps: AppDependencies) => {
             removeMember: deps.signup.removeMember,
             invitationService: deps.invitationService,
             tokenHandlers: deps.signup.tokenHandlers,
+          },
+    auth:
+      deps.signup === undefined
+        ? undefined
+        : {
+            passkeyService: deps.signup.passkeyService,
+            sessionService: deps.signup.sessionService,
+            userService: deps.signup.userService,
+            membershipService: deps.membershipService,
+            organizationStore: deps.organizationStore,
+            organizationService: deps.organizationService,
+            signupService: deps.signup.signupService,
+            completeSignup: deps.signup.completeSignup,
+            validateInvitation: deps.validateInvitation,
+            acceptInvitation: deps.acceptInvitation,
+            sessionCookieName,
+            cookieOptions,
+            clientIpOf,
+            rateLimit: rateLimitConfig,
           },
   });
   if (deps.enableTestFixtures && deps.database) {
@@ -306,16 +335,6 @@ export const createApp = async (deps: AppDependencies) => {
     acceptInvitation: deps.acceptInvitation,
     authMiddleware,
   });
-
-  // Session cookie configuration (shared between signup and passkey routes)
-  const sessionCookieName = deps.cookie.sessionName;
-  const cookieOptions = {
-    httpOnly: true,
-    secure: deps.cookie.secure,
-    sameSite: 'strict' as const,
-    path: '/',
-    maxAge: deps.cookie.maxAge,
-  };
 
   // Signup routes - only registered if webauthn config is provided
   if (deps.signup) {

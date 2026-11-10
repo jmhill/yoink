@@ -299,4 +299,60 @@ describe('Security Features', () => {
       expect(response.statusCode).toBe(429);
     });
   });
+
+  describe('Rate limiting on the web auth edge', () => {
+    it('returns 429 after exceeding the login verify limit on /web-api', async () => {
+      for (let i = 0; i < 10; i++) {
+        await app.inject({
+          method: 'POST',
+          url: '/web-api/auth/login/verify',
+          payload: { challenge: 'fake-challenge', credential: {} },
+        });
+      }
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/web-api/auth/login/verify',
+        payload: { challenge: 'fake-challenge', credential: {} },
+      });
+
+      expect(response.statusCode).toBe(429);
+    });
+
+    it('returns 429 after exceeding the signup limit on /web-api', async () => {
+      for (let i = 0; i < 5; i++) {
+        await app.inject({
+          method: 'POST',
+          url: '/web-api/auth/signup/options',
+          payload: { code: 'TESTCODE', email: 'test@example.com' },
+        });
+      }
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/web-api/auth/signup/options',
+        payload: { code: 'TESTCODE', email: 'test@example.com' },
+      });
+
+      expect(response.statusCode).toBe(429);
+    });
+
+    it('keeps the alias signup limit independent of /web-api', async () => {
+      for (let i = 0; i < 5; i++) {
+        await app.inject({
+          method: 'POST',
+          url: '/web-api/auth/signup/options',
+          payload: { code: 'TESTCODE', email: 'test@example.com' },
+        });
+      }
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/auth/signup/options',
+        payload: { code: 'TESTCODE', email: 'test@example.com' },
+      });
+
+      expect(response.statusCode).toBe(404);
+    });
+  });
 });

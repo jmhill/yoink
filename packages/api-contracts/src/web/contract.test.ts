@@ -1,6 +1,7 @@
 import { ProcedureContract } from '@orpc/contract';
 import { getOpenAPIMeta } from '@orpc/openapi';
 import { describe, expect, it } from 'vitest';
+import { webAuthContract } from './auth-contract.js';
 import { webInboxContract } from './contract.js';
 import { webSettingsContract } from './settings-contract.js';
 
@@ -68,5 +69,28 @@ describe('web settings contract', () => {
     ]);
     expect(listed.some((procedure) => procedure.path.includes('passkey'))).toBe(false);
     expect(listed.some((procedure) => procedure.path.includes('web-api'))).toBe(false);
+  });
+});
+
+describe('web auth contract', () => {
+  it('is login, signup, session, passkeys, and join, on the resource path', () => {
+    const listed = procedures(webAuthContract);
+    expect(listed).toEqual([
+      { key: 'loginOptions', method: 'POST', path: '/auth/login/options' },
+      { key: 'loginVerify', method: 'POST', path: '/auth/login/verify' },
+      { key: 'logout', method: 'POST', path: '/auth/logout' },
+      { key: 'session', method: 'GET', path: '/auth/session' },
+      { key: 'signupOptions', method: 'POST', path: '/auth/signup/options' },
+      { key: 'signupVerify', method: 'POST', path: '/auth/signup/verify' },
+      { key: 'validateInvitation', method: 'POST', path: '/invitations/validate' },
+      { key: 'acceptInvitation', method: 'POST', path: '/invitations/accept' },
+      { key: 'registerPasskeyOptions', method: 'POST', path: '/auth/passkey/register/options' },
+      { key: 'registerPasskey', method: 'POST', path: '/auth/passkey/register/verify' },
+      { key: 'listPasskeys', method: 'GET', path: '/auth/passkey/credentials' },
+      { key: 'deletePasskey', method: 'DELETE', path: '/auth/passkey/credentials/{credentialId}' },
+    ]);
+    expect(listed.some((procedure) => procedure.path.includes('/auth/tokens'))).toBe(false);
+    expect(listed.some((procedure) => procedure.path.includes('web-api'))).toBe(false);
+    expect(listed.some((procedure) => procedure.path.startsWith('/api'))).toBe(false);
   });
 });

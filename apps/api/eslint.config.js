@@ -556,7 +556,7 @@ export default [
               allow: ['captures'],
             },
             // M6.2 Inbox calls the captures interface.
-            // M6.3-settings calls today's access handlers through narrow ports.
+            // M6.3-settings and M6.3-auth call today's access handlers through narrow ports.
             // M5.13 replaces those handlers. This edge does not import access SQL.
             {
               from: [['edge', { edge: 'web' }]],

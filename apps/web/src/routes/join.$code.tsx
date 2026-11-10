@@ -9,7 +9,7 @@ import {
   ownerInviteJoinTitle,
   YOUR_ROLE_OWNER_LABEL,
 } from '@yoink/api-contracts';
-import { getSession, validateInvitation, acceptInvitation, switchOrganization } from '@/api/auth';
+import { getSession, validateInvitation, acceptInvitation, switchWebOrganization } from '@/api/auth';
 
 export const Route = createFileRoute('/join/$code')({
   component: JoinPage,
@@ -81,7 +81,7 @@ function JoinPage() {
     }
 
     // Switch to the new organization
-    const switchResult = await switchOrganization(result.data.organizationId);
+    const switchResult = await switchWebOrganization(result.data.organizationId);
 
     if (!switchResult.ok) {
       // Even if switch fails, user is now a member - just go home

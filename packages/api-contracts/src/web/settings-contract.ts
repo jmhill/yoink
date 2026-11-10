@@ -44,8 +44,7 @@ const tokenId = z.object({
 
 /**
  * Settings and organizations. Paths are the resource after `/web-api`.
- * Passkey credential management stays on the `/api` alias.
- * Validate and accept invitation stay there too: they belong to join and signup.
+ * Passkeys, login, signup, and join validate/accept are the auth contract.
  */
 export const webSettingsContract = oc.router({
   switchOrganization: oc

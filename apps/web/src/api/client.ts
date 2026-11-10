@@ -2,7 +2,7 @@ import { createORPCClient, ResponseError } from '@orpc/client';
 import type { RouterContractClient } from '@orpc/contract';
 import { OpenAPILink } from '@orpc/openapi/fetch';
 import type { JsonifiedClient } from '@orpc/openapi';
-import { webInboxContract, webSettingsContract } from '@yoink/api-contracts/web';
+import { webAuthContract, webInboxContract, webSettingsContract } from '@yoink/api-contracts/web';
 import {
   authOrpcContract,
   captureOrpcContract,
@@ -21,6 +21,7 @@ import { tokenStorage } from '@/lib/token';
 type CaptureClient = JsonifiedClient<RouterContractClient<typeof captureOrpcContract>>;
 type InboxClient = JsonifiedClient<RouterContractClient<typeof webInboxContract>>;
 type SettingsClient = JsonifiedClient<RouterContractClient<typeof webSettingsContract>>;
+type WebAuthClient = JsonifiedClient<RouterContractClient<typeof webAuthContract>>;
 
 /** Build id from Vite. Vitest leaves the identifier unset, which is `dev`. */
 const webBuildId = (): string =>
@@ -108,8 +109,9 @@ export const httpFailureMessage = (error: unknown): string | undefined => {
  * Session cookies, with a Bearer token when one is still stored.
  * Content-Type is omitted when there is no body so Fastify does not reject
  * an empty JSON payload.
+ * Login and session checks must not redirect on 401. The pages handle that.
  */
-const fetchWithSession = (url: string, init: RequestInit): Promise<Response> => {
+const fetchKeepingBody = (url: string, init: RequestInit): Promise<Response> => {
   const headers = withBearerAuthorization(
     headersForApiRequest(init.headers ?? {}, init.body),
     tokenStorage.get()
@@ -127,9 +129,6 @@ const fetchWithSession = (url: string, init: RequestInit): Promise<Response> => 
       redirect: 'follow',
     })
     .then(async (response) => {
-      if (response.status === 401) {
-        redirectToLogin();
-      }
       // oRPC does not read a body it classifies as empty. Chromium then has
       // nothing for Network.getResponseBody, and Playwright's response.text()
       // fails on a 204. The previous client always read the body before the
@@ -138,6 +137,16 @@ const fetchWithSession = (url: string, init: RequestInit): Promise<Response> => 
       return response;
     });
 };
+
+const fetchWithSession = (url: string, init: RequestInit): Promise<Response> =>
+  fetchKeepingBody(url, init).then((response) => {
+    if (response.status === 401) {
+      redirectToLogin();
+    }
+    return response;
+  });
+
+const fetchForAuth = fetchKeepingBody;
 
 export const captureClient: CaptureClient = createORPCClient(
   new OpenAPILink(captureOrpcContract, { fetch: fetchWithSession })
@@ -156,12 +165,23 @@ export const inboxClient: InboxClient = createORPCClient(
 
 /**
  * Settings and organizations. `/web-api` plus `/organizations/switch`
- * is `/web-api/organizations/switch`. Passkeys stay on `passkey.ts`.
+ * is `/web-api/organizations/switch`.
  */
 export const settingsClient: SettingsClient = createORPCClient(
   new OpenAPILink(webSettingsContract, {
     origin: '/web-api',
     fetch: fetchWithSession,
+  })
+);
+
+/**
+ * Login, signup, session, passkeys, and join.
+ * A 401 stays on the page. Login verify uses 401 for an unknown passkey.
+ */
+export const authWebClient: WebAuthClient = createORPCClient(
+  new OpenAPILink(webAuthContract, {
+    origin: '/web-api',
+    fetch: fetchForAuth,
   })
 );
 

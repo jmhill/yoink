@@ -3908,11 +3908,11 @@ export const createPlaywrightActor = (
       await expect(page.getByPlaceholder('Quick capture...')).toBeVisible();
     },
 
-    async shouldKeepSettingsOnWebEdgeAndPasskeysOnApiAlias(): Promise<void> {
+    async shouldKeepSettingsOnWebEdge(): Promise<void> {
       const passkeys = page.waitForRequest(
         (request) =>
           request.method() === 'GET' &&
-          new URL(request.url()).pathname === '/api/auth/passkey/credentials'
+          new URL(request.url()).pathname === '/web-api/auth/passkey/credentials'
       );
       await settingsPage.goto();
       await passkeys;
@@ -3938,7 +3938,8 @@ export const createPlaywrightActor = (
           path.startsWith('/api/organizations') ||
           path.startsWith('/api/invitations') ||
           path === '/api/auth/tokens' ||
-          path.startsWith('/api/auth/tokens/')
+          path.startsWith('/api/auth/tokens/') ||
+          path.startsWith('/api/auth/passkey')
         ) {
           aliasHits.push(`${request.method()} ${path}`);
         }
@@ -3951,6 +3952,51 @@ export const createPlaywrightActor = (
       page.off('request', onRequest);
       if (aliasHits.length > 0) {
         throw new Error(`Settings still called the alias: ${aliasHits.join(', ')}`);
+      }
+    },
+
+    async shouldKeepAuthOnWebEdge(): Promise<void> {
+      const session = page.waitForRequest(
+        (request) =>
+          request.method() === 'GET' && new URL(request.url()).pathname === '/web-api/auth/session'
+      );
+      const passkeys = page.waitForRequest(
+        (request) =>
+          request.method() === 'GET' &&
+          new URL(request.url()).pathname === '/web-api/auth/passkey/credentials'
+      );
+      const aliasHits: string[] = [];
+      const onRequest = (request: { method: () => string; url: () => string }) => {
+        const path = new URL(request.url()).pathname;
+        if (
+          path === '/api/auth/session' ||
+          path === '/api/auth/logout' ||
+          path.startsWith('/api/auth/login') ||
+          path.startsWith('/api/auth/signup') ||
+          path.startsWith('/api/auth/passkey') ||
+          path === '/api/invitations/validate' ||
+          path === '/api/invitations/accept' ||
+          path === '/api/organizations/switch'
+        ) {
+          aliasHits.push(`${request.method()} ${path}`);
+        }
+      };
+      page.on('request', onRequest);
+      await settingsPage.goto();
+      await session;
+      await passkeys;
+
+      const validate = page.waitForRequest(
+        (request) =>
+          request.method() === 'POST' &&
+          new URL(request.url()).pathname === '/web-api/invitations/validate'
+      );
+      await page.goto('/signup?code=NOTREAL1');
+      await validate;
+      await expect(page.getByText(INVITATION_NOT_FOUND_MESSAGE)).toBeVisible();
+      page.off('request', onRequest);
+      if (aliasHits.length > 0) {
+        throw new Error(`Auth still called the alias: ${aliasHits.join(', ')}`);
       }
     },
 

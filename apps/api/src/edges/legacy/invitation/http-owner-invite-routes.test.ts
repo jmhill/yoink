@@ -35,7 +35,7 @@ import {
   testConfigFull,
 } from '../../../tests/helpers/test-app.js';
 import { ADMIN_SESSION_COOKIE } from '../../_shared/auth/admin-session-middleware.js';
-import { registerAdminRoutes } from '../admin/admin-routes.js';
+import { registerAdminRoutes } from '../../admin/register.js';
 import { registerInvitationRoutes } from './invitation-routes.js';
 import { createAdminSessionService } from '../../../access/domain/index.js';
 import { createAdminSessionParticipant } from '../../../access/infrastructure/admin-session-participant.js';

@@ -568,4 +568,53 @@ describe('admin HTTP routes', () => {
       expect(demote.json().message).toBe(THERE_HAS_TO_BE_AT_LEAST_ONE_ADMIN_MESSAGE);
     });
   });
+
+  describe('/admin-api', () => {
+    it('logs in with the admin cookie on path / and reads the session', async () => {
+      const login = await app.inject({
+        method: 'POST',
+        url: '/admin-api/login',
+        payload: { password: TEST_ADMIN_PASSWORD },
+        headers: { 'x-yoink-build': 'abc123' },
+      });
+      expect(login.statusCode).toBe(200);
+      const cookie = login.cookies.find((entry) => entry.name === ADMIN_SESSION_COOKIE);
+      expect(cookie?.path).toBe('/');
+      expect(cookie?.value).toBeTruthy();
+
+      const session = await app.inject({
+        method: 'GET',
+        url: '/admin-api/session',
+        cookies: { [ADMIN_SESSION_COOKIE]: cookie!.value },
+      });
+      expect(session.statusCode).toBe(200);
+      expect(session.json()).toEqual({ authenticated: true });
+
+      const organizations = await app.inject({
+        method: 'GET',
+        url: '/admin-api/organizations',
+        cookies: { [ADMIN_SESSION_COOKIE]: cookie!.value },
+      });
+      expect(organizations.statusCode).toBe(200);
+    });
+
+    it('does not accept a web session', async () => {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/admin-api/organizations',
+        cookies: { [TEST_SESSION_COOKIE]: TEST_SESSION_ID },
+      });
+      expect([401, 403]).toContain(response.statusCode);
+    });
+
+    it('keeps the legacy login status and body', async () => {
+      const login = await app.inject({
+        method: 'POST',
+        url: '/api/admin/login',
+        payload: { password: 'wrong-password' },
+      });
+      expect(login.statusCode).toBe(401);
+      expect(login.json()).toEqual({ message: 'Invalid password' });
+    });
+  });
 });

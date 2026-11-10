@@ -1,5 +1,4 @@
-import type { FastifyInstance } from 'fastify';
-import rateLimit from '@fastify/rate-limit';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { OpenAPIHandler } from '@orpc/openapi/fastify';
 import { implement } from '@orpc/server';
 import {
@@ -7,32 +6,36 @@ import {
   OWNER_EMAIL_REQUIRED_MESSAGE,
   THERE_HAS_TO_BE_AT_LEAST_ONE_ADMIN_MESSAGE,
 } from '@yoink/api-contracts';
-import { adminProtectedOrpcContract, adminPublicOrpcContract } from '@yoink/api-contracts/orpc';
-import type { AdminService } from '../../../access/application/handle-admin.js';
-import type { AdminServiceError } from '../../../access/domain/admin-errors.js';
-import type { AdminSessionService } from '../../../access/domain/index.js';
-import type { InvitationService } from '../../../access/domain/invitation-service.js';
-import type { Invitation } from '../../../access/domain/invitation.js';
-import type { User } from '../../../access/domain/user.js';
-import { ADMIN_SESSION_COOKIE, createAdminSessionMiddleware } from '../../_shared/auth/admin-session-middleware.js';
-import type { RateLimitConfig, CookieConfig } from '../../../platform/config/schema.js';
+import {
+  createAdminProtectedContract,
+  createAdminPublicContract,
+} from '@yoink/api-contracts/admin';
+import { adminRequestLog } from './log-context.js';
+import type { AdminService } from '../../access/application/handle-admin.js';
+import type { AdminServiceError } from '../../access/domain/admin-errors.js';
+import type { AdminSessionService } from '../../access/domain/index.js';
+import type { InvitationService } from '../../access/domain/invitation-service.js';
+import type { Invitation } from '../../access/domain/invitation.js';
+import type { User } from '../../access/domain/user.js';
+import { ADMIN_SESSION_COOKIE, createAdminSessionMiddleware } from '../_shared/auth/admin-session-middleware.js';
+import type { RateLimitConfig, CookieConfig } from '../../platform/config/schema.js';
 import {
   namedRequestValidationError,
   validationIssuePaths,
   type RequestValidationErr,
-} from '../../_shared/request-validation.js';
-import type { ClientIpOf } from '../../_shared/request-client-ip.js';
-import type { handleCreateWorkspace } from '../../../access/application/handle-create-workspace.js';
-import type { handleIssueOwnerInvitation } from '../../../access/application/handle-issue-owner-invitation.js';
-import type { handleGetOwnerInvitation } from '../../../access/application/handle-get-owner-invitation.js';
-import type { handleListWorkspaces } from '../../../access/application/handle-list-workspaces.js';
-import type { HandleListWorkspacesError } from '../../../access/application/handle-list-workspaces.js';
-import { dispatchOrpc } from '../../_shared/orpc/dispatch.js';
+} from '../_shared/request-validation.js';
+import type { ClientIpOf } from '../_shared/request-client-ip.js';
+import type { handleCreateWorkspace } from '../../access/application/handle-create-workspace.js';
+import type { handleIssueOwnerInvitation } from '../../access/application/handle-issue-owner-invitation.js';
+import type { handleGetOwnerInvitation } from '../../access/application/handle-get-owner-invitation.js';
+import type { handleListWorkspaces } from '../../access/application/handle-list-workspaces.js';
+import type { HandleListWorkspacesError } from '../../access/application/handle-list-workspaces.js';
+import { dispatchOrpc } from '../_shared/orpc/dispatch.js';
 import {
   openApiHandlerOptions,
   yoinkOpenApiHandlerOptions,
-} from '../../_shared/orpc/handler-options.js';
-import type { OrpcHttpContext } from '../../_shared/orpc/http-context.js';
+} from '../_shared/orpc/handler-options.js';
+import type { OrpcHttpContext } from '../_shared/orpc/http-context.js';
 import {
   accessHttpError,
   accessInternalError,
@@ -41,7 +44,7 @@ import {
   createWorkspaceErrorResponse,
   issueOwnerInvitationErrorResponse,
   loggedCause,
-} from '../../_shared/auth/access-http-errors.js';
+} from '../_shared/auth/access-http-errors.js';
 
 export type AdminRoutesDependencies = {
   adminService: AdminService;
@@ -300,6 +303,44 @@ const updateProjectErrorResponse = (error: AdminServiceError) => {
   }
 };
 
+/** Same long labels as `@fastify/rate-limit` (`@lukeed/ms` format). */
+const retryAfterLabel = (ttlInSeconds: number): string => {
+  const ms = ttlInSeconds * 1000;
+  const label = (amount: number, unit: string) =>
+    `${Math.round(amount)} ${unit}${Math.round(amount) === 1 ? '' : 's'}`;
+  if (ms < 1000) return `${ms} ms`;
+  if (ms < 60_000) return label(ms / 1000, 'second');
+  if (ms < 3_600_000) return label(ms / 60_000, 'minute');
+  if (ms < 86_400_000) return label(ms / 3_600_000, 'hour');
+  return label(ms / 86_400_000, 'day');
+};
+
+const sharedAdminLoginLimit = (
+  app: FastifyInstance,
+  rateLimitConfig: RateLimitConfig,
+  clientIpOf: ClientIpOf
+) => {
+  if (!rateLimitConfig.enabled) return undefined;
+  const consume = app.createRateLimit({
+    max: rateLimitConfig.adminLoginMax,
+    timeWindow: rateLimitConfig.adminLoginTimeWindow,
+    keyGenerator: (request) => clientIpOf(request),
+  });
+  return async (request: FastifyRequest, reply: FastifyReply) => {
+    const limit = await consume(request);
+    if (limit.isAllowed) return;
+    reply.header('x-ratelimit-limit', limit.max);
+    reply.header('x-ratelimit-remaining', limit.isExceeded ? 0 : limit.remaining);
+    reply.header('x-ratelimit-reset', limit.ttlInSeconds);
+    if (!limit.isExceeded) return;
+    reply.header('retry-after', limit.ttlInSeconds);
+    throw Object.assign(
+      new Error(`Rate limit exceeded, retry in ${retryAfterLabel(limit.ttlInSeconds)}`),
+      { statusCode: 429 }
+    );
+  };
+};
+
 const adminProtectedValidation = (err: RequestValidationErr) => {
   if (validationIssuePaths(err).includes('ownerEmail')) {
     return {
@@ -327,6 +368,16 @@ export const registerAdminRoutes = async (
     clientIpOf,
   } = deps;
 
+  // One bucket for both mounts. A limiter inside each mount would let one IP
+  // spend adminLoginMax on `/api/admin/login` and again on `/admin-api/login`.
+  const enforceAdminLoginLimit = sharedAdminLoginLimit(app, rateLimitConfig, clientIpOf);
+
+  const mountSurface = async (
+    root: '/api/admin' | '/admin-api',
+    logBuild: boolean,
+    enforceLoginLimit: typeof enforceAdminLoginLimit
+  ) => {
+  const buildLog = logBuild ? { onRequest: adminRequestLog } : {};
   const requireOrganization = async (organizationId: string, storageMessage: string) => {
     const orgResult = await adminService.getOrganization(organizationId);
     if (orgResult.isErr()) {
@@ -338,7 +389,7 @@ export const registerAdminRoutes = async (
     return orgResult.value;
   };
 
-  const publicContract = implement(adminPublicOrpcContract).$context<OrpcHttpContext>();
+  const publicContract = implement(createAdminPublicContract(root)).$context<OrpcHttpContext>();
   const publicRouter = publicContract.router({
     login: publicContract.login.handler(async ({ input, context }) => {
       const result = adminSessionService.login(input.password);
@@ -367,7 +418,7 @@ export const registerAdminRoutes = async (
     }),
   });
 
-  const protectedContract = implement(adminProtectedOrpcContract).$context<OrpcHttpContext>();
+  const protectedContract = implement(createAdminProtectedContract(root)).$context<OrpcHttpContext>();
   const protectedRouter = protectedContract.router({
     getSession: protectedContract.getSession.handler(async () => ({ authenticated: true })),
     listOrganizations: protectedContract.listOrganizations.handler(async () => {
@@ -652,23 +703,22 @@ export const registerAdminRoutes = async (
     openApiHandlerOptions(adminProtectedValidation)
   );
 
-  await app.register(async (publicApp) => {
-    if (rateLimitConfig.enabled) {
-      await publicApp.register(rateLimit, {
-        max: rateLimitConfig.adminLoginMax,
-        timeWindow: rateLimitConfig.adminLoginTimeWindow,
-        keyGenerator: (request) => clientIpOf(request),
-      });
-    }
+  const publicOnRequest = [
+    ...(logBuild ? [adminRequestLog] : []),
+    ...(enforceLoginLimit ? [enforceLoginLimit] : []),
+  ];
 
+  await app.register(async (publicApp) => {
     publicApp.route({
       method: 'POST',
-      url: '/api/admin/login',
+      url: `${root}/login`,
+      ...(publicOnRequest.length > 0 ? { onRequest: publicOnRequest } : {}),
       handler: async (request, reply) => dispatchOrpc(publicHandler, request, reply),
     });
     publicApp.route({
       method: 'POST',
-      url: '/api/admin/logout',
+      url: `${root}/logout`,
+      ...(publicOnRequest.length > 0 ? { onRequest: publicOnRequest } : {}),
       handler: async (request, reply) => dispatchOrpc(publicHandler, request, reply),
     });
   });
@@ -684,24 +734,30 @@ export const registerAdminRoutes = async (
       protectedApp.route({
         method,
         url,
+        ...buildLog,
         handler: async (request, reply) => dispatchOrpc(protectedHandler, request, reply),
       });
     };
 
-    mount('GET', '/api/admin/session');
-    mount(['GET', 'POST'], '/api/admin/organizations');
-    mount('POST', '/api/admin/organizations/:id/owner-invitation');
-    mount('GET', '/api/admin/organizations/:id/owner-invitation');
-    mount(['GET', 'PATCH'], '/api/admin/organizations/:id');
-    mount('GET', '/api/admin/organizations/:organizationId/users');
-    mount('POST', '/api/admin/organizations/:organizationId/users');
-    mount('PUT', '/api/admin/organizations/:id/owner');
-    mount('PATCH', '/api/admin/organizations/:id/members/:userId');
-    mount(['GET', 'PATCH'], '/api/admin/users/:id');
-    mount('PATCH', '/api/admin/projects/:id');
-    mount('GET', '/api/admin/organizations/:organizationId/tokens');
-    mount('POST', '/api/admin/organizations/:organizationId/tokens');
-    mount('DELETE', '/api/admin/tokens/:id');
-    mount('POST', '/api/admin/organizations/:organizationId/invitations');
+    mount('GET', `${root}/session`);
+    mount(['GET', 'POST'], `${root}/organizations`);
+    mount('POST', `${root}/organizations/:id/owner-invitation`);
+    mount('GET', `${root}/organizations/:id/owner-invitation`);
+    mount(['GET', 'PATCH'], `${root}/organizations/:id`);
+    mount('GET', `${root}/organizations/:organizationId/users`);
+    mount('POST', `${root}/organizations/:organizationId/users`);
+    mount('PUT', `${root}/organizations/:id/owner`);
+    mount('PATCH', `${root}/organizations/:id/members/:userId`);
+    mount(['GET', 'PATCH'], `${root}/users/:id`);
+    mount('PATCH', `${root}/projects/:id`);
+    mount('GET', `${root}/organizations/:organizationId/tokens`);
+    mount('POST', `${root}/organizations/:organizationId/tokens`);
+    mount('DELETE', `${root}/tokens/:id`);
+    mount('POST', `${root}/organizations/:organizationId/invitations`);
   });
+  };
+
+  // `/api/admin` stays until M6.5. The admin app uses `/admin-api`.
+  await mountSurface('/api/admin', false, enforceAdminLoginLimit);
+  await mountSurface('/admin-api', true, enforceAdminLoginLimit);
 };

@@ -6,7 +6,7 @@
  * `/api`, `/test-api`, `/web-api`, and `/extension-api` are the same kind of
  * prefix. An unmatched URL under one of them is a JSON 404. M3.4 mounts
  * `/test-api`. M6.1 mounts `/extension-api/v1`. M6.2 mounts `/web-api`.
- * `/admin-api` is not mounted.
+ * M6.4 mounts `/admin-api`.
  */
 
 const RESERVED_API_PREFIXES = [

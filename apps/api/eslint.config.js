@@ -567,6 +567,12 @@ export default [
               from: [['edge', { edge: 'legacy' }]],
               allow: ['access'],
             },
+            // M6.4. The admin edge calls the same access handlers the legacy
+            // admin routes call. Other modules stay disallowed.
+            {
+              from: [['edge', { edge: 'admin' }]],
+              allow: ['access'],
+            },
             // M3.5. Auth adapters may call today's access services until M5.13.
             // The rest of edges/_shared may not.
             {
@@ -611,7 +617,13 @@ export default [
             // task-management, composition, or platform-database.
             {
               from: [['edge-test', { edge: 'legacy' }]],
-              allow: ['access', 'platform-database', 'composition', 'task-management'],
+              allow: [
+                'access',
+                'platform-database',
+                'composition',
+                'task-management',
+                ['edge', { edge: 'admin' }],
+              ],
             },
             // M3.6. The health error-map test imports the map that stays in
             // health. Production ops already may import health.

@@ -12,7 +12,7 @@ import { registerOrpcHealthRoutes } from './edges/ops/orpc-health-routes.js';
 import { registerExtensionApiV1 } from './edges/extension/v1/index.js';
 import { registerWebApi } from './edges/web/index.js';
 import { registerPublicApiV1 } from './edges/public-api/v1/index.js';
-import { registerAdminRoutes, type AdminRoutesDependencies } from './edges/legacy/admin/admin-routes.js';
+import { registerAdminRoutes, type AdminRoutesDependencies } from './edges/admin/index.js';
 import { registerAuthRoutes } from './edges/legacy/auth/auth-routes.js';
 import { registerInvitationRoutes, type InvitationRoutesDependencies } from './edges/legacy/invitation/invitation-routes.js';
 import { registerOrganizationRoutes } from './edges/legacy/organization/organization-routes.js';
@@ -272,7 +272,7 @@ export const createApp = async (deps: AppDependencies) => {
     });
   }
 
-  // Admin routes - only registered if admin config is provided
+  // Admin session auth. `/api/admin` stays until M6.5. The admin app uses `/admin-api`.
   if (deps.admin) {
     await registerAdminRoutes(
       app,
@@ -397,7 +397,7 @@ export const createApp = async (deps: AppDependencies) => {
 
   // SPA fallback. `/admin` is the admin app. `/admin-api` is not.
   // `/api`, `/test-api`, `/web-api`, and `/extension-api` are not the web app.
-  // `/extension-api/v1` and `/web-api` are mounted. `/admin-api` is not.
+  // `/extension-api/v1`, `/web-api`, and `/admin-api` are mounted.
   app.setNotFoundHandler((request, reply) => {
     reply.header('Cache-Control', NEVER_CACHE_CONTROL);
     const decision = decideSpaFallback(request.url);

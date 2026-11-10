@@ -3,7 +3,7 @@
  * `url.pathname + url.search`. Same-origin `/admin` (the admin app), `/api`,
  * and `/test-api` must not receive the PWA SPA `index.html` fallback.
  * `/admin-api`, `/web-api`, and `/extension-api` must not receive the web app.
- * `/extension-api/v1` and `/web-api` are mounted. `/admin-api` is not.
+ * `/extension-api/v1`, `/web-api`, and `/admin-api` are mounted.
  * `/admin-api` does not match the `/admin` pattern.
  */
 export const PWA_NAVIGATE_FALLBACK_DENYLIST: RegExp[] = [

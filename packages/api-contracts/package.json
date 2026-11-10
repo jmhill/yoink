@@ -23,6 +23,10 @@
     "./web": {
       "types": "./dist/web/index.d.ts",
       "import": "./dist/web/index.js"
+    },
+    "./admin": {
+      "types": "./dist/admin/index.d.ts",
+      "import": "./dist/admin/index.js"
     }
   },
   "scripts": {

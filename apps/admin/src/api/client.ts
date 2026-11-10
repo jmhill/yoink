@@ -2,13 +2,16 @@ import { createORPCClient, ResponseError } from '@orpc/client';
 import type { RouterContractClient } from '@orpc/contract';
 import { OpenAPILink } from '@orpc/openapi/fetch';
 import type { JsonifiedClient } from '@orpc/openapi';
-import {
-  adminProtectedOrpcContract,
-  adminPublicOrpcContract,
-} from '@yoink/api-contracts/orpc';
+import { adminProtectedContract, adminPublicContract } from '@yoink/api-contracts/admin';
 
-type PublicClient = JsonifiedClient<RouterContractClient<typeof adminPublicOrpcContract>>;
-export type AdminClient = JsonifiedClient<RouterContractClient<typeof adminProtectedOrpcContract>>;
+type PublicClient = JsonifiedClient<RouterContractClient<typeof adminPublicContract>>;
+export type AdminClient = JsonifiedClient<RouterContractClient<typeof adminProtectedContract>>;
+
+export const YOINK_BUILD_HEADER = 'X-Yoink-Build';
+
+/** Build id from Vite. Vitest leaves the identifier unset, which is `dev`. */
+const adminBuildId = (): string =>
+  typeof __COMMIT_SHA__ === 'string' && __COMMIT_SHA__.length > 0 ? __COMMIT_SHA__ : 'dev';
 
 /**
  * HTTP status from an OpenAPI link error. Yoink error bodies are not the oRPC
@@ -45,18 +48,23 @@ export const httpFailureBody = (error: unknown): unknown => {
   return body;
 };
 
-const fetchWithSession = (url: string, init: RequestInit): Promise<Response> =>
-  globalThis.fetch(url, { ...init, credentials: 'include' });
+const fetchWithSession = (url: string, init: RequestInit): Promise<Response> => {
+  const headers = new Headers(init.headers);
+  if (!headers.has(YOINK_BUILD_HEADER)) {
+    headers.set(YOINK_BUILD_HEADER, adminBuildId());
+  }
+  return globalThis.fetch(url, { ...init, headers, credentials: 'include' });
+};
 
-const openApiLink = (contract: typeof adminPublicOrpcContract | typeof adminProtectedOrpcContract) =>
+const openApiLink = (contract: typeof adminPublicContract | typeof adminProtectedContract) =>
   new OpenAPILink(contract, {
     fetch: fetchWithSession,
   });
 
 /**
  * Same-origin admin API. Cookie sessions travel with `credentials: 'include'`.
- * Paths stay `/api/admin/...`.
+ * Paths are `/admin-api/...`. The session cookie path stays `/`.
  */
-export const publicClient: PublicClient = createORPCClient(openApiLink(adminPublicOrpcContract));
+export const publicClient: PublicClient = createORPCClient(openApiLink(adminPublicContract));
 
-export const adminClient: AdminClient = createORPCClient(openApiLink(adminProtectedOrpcContract));
+export const adminClient: AdminClient = createORPCClient(openApiLink(adminProtectedContract));

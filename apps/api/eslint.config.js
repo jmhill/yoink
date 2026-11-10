@@ -558,6 +558,8 @@ export default [
             // M6.2 Inbox calls the captures interface.
             // M6.3-settings and M6.3-auth call today's access handlers through narrow ports.
             // M6.3-tasks-lists calls the task-management list and task handlers.
+            // M6.3-project-page calls the task-management project handlers.
+            // Open-task pages stay in query order. Finished tasks and history stay on the alias.
             // M5.13 replaces the access handlers. This edge does not import access SQL.
             {
               from: [['edge', { edge: 'web' }]],

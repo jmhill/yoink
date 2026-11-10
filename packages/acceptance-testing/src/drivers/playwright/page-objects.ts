@@ -15,7 +15,11 @@ import {
   tasksBoardCopyForUrl,
 } from './tasks-board-url.js';
 import { waitForSettledOpenDialog, waitForSettledOpenSheet } from './walkthrough-screenshots.js';
-import { isNamedListCollectionUrl, isNamedListItemUrl } from './web-edge-url.js';
+import {
+  isNamedListCollectionUrl,
+  isNamedListItemUrl,
+  isProjectItemUrl,
+} from './web-edge-url.js';
 
 /**
  * Page object for the login page (/login).
@@ -3349,8 +3353,7 @@ export class ProjectPage {
     await input.fill(name);
     const responsePromise = this.page.waitForResponse(
       (response) =>
-        response.url().includes('/api/projects/') &&
-        response.request().method() === 'PATCH'
+        isProjectItemUrl(response.url()) && response.request().method() === 'PATCH'
     );
     await this.page.locator('[data-project-save]').click();
     const response = await responsePromise;
@@ -3367,8 +3370,7 @@ export class ProjectPage {
     await input.fill(objective);
     const responsePromise = this.page.waitForResponse(
       (response) =>
-        response.url().includes('/api/projects/') &&
-        response.request().method() === 'PATCH'
+        isProjectItemUrl(response.url()) && response.request().method() === 'PATCH'
     );
     await this.page.locator('[data-project-save]').click();
     const response = await responsePromise;

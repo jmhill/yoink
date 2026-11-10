@@ -8,7 +8,9 @@ import {
   listClient,
   organizationClient,
   settingsClient,
+  projectClient,
   taskClient,
+  webProjectClient,
   webTaskClient,
   YOINK_BUILD_HEADER,
 } from './client';
@@ -181,7 +183,7 @@ describe('web OpenAPI client', () => {
     expect(calls[3]?.url.startsWith('/api/captures?')).toBe(true);
   });
 
-  it('calls tasks and lists on /web-api and leaves project-page task delete on the alias', async () => {
+  it('calls tasks and lists on /web-api and leaves taskClient.delete on the alias', async () => {
     const calls: { url: string; method: string; build: string | null }[] = [];
     vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
       const headers = new Headers(init.headers);
@@ -209,6 +211,52 @@ describe('web OpenAPI client', () => {
     expect(calls[1]?.url.startsWith('/web-api/lists?')).toBe(true);
     expect(calls[2]?.url).toBe('/api/tasks/550e8400-e29b-41d4-a716-446655440000');
     expect(calls[2]?.method).toBe('DELETE');
+  });
+
+  it('calls the project page and staged import on /web-api and leaves history on the alias', async () => {
+    const calls: { url: string; method: string }[] = [];
+    const projectId = '550e8400-e29b-41d4-a716-446655440041';
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
+      calls.push({ url, method: init.method ?? 'GET' });
+      if (url.includes('/history')) {
+        return jsonResponse(200, {
+          entries: [],
+          hasMore: false,
+          nextCursor: null,
+          total: 0,
+        });
+      }
+      if (url.includes('/imports')) {
+        return jsonResponse(200, { imports: [] });
+      }
+      if (url.includes('/tasks')) {
+        return jsonResponse(200, { tasks: [], hasMore: false, nextCursor: null, total: 0 });
+      }
+      return jsonResponse(200, {
+        id: projectId,
+        organizationId: '550e8400-e29b-41d4-a716-446655440001',
+        name: 'Harbor',
+        status: 'active',
+        waitingOn: null,
+        waitingSince: null,
+        nextActionTaskId: null,
+        notebookPages: [],
+        createdById: '550e8400-e29b-41d4-a716-446655440002',
+        createdAt: '2024-06-15T12:00:00.000Z',
+        lastChangedAt: null,
+        lastChangedBy: null,
+      });
+    });
+
+    await webProjectClient.get({ id: projectId });
+    await webProjectClient.listOpenTasks({ id: projectId, limit: 10 });
+    await webProjectClient.listImports({});
+    await projectClient.listHistory({ id: projectId, limit: 10 });
+
+    expect(calls[0]?.url).toBe(`/web-api/projects/${projectId}`);
+    expect(calls[1]?.url.startsWith(`/web-api/projects/${projectId}/tasks?`)).toBe(true);
+    expect(calls[2]?.url).toBe('/web-api/projects/imports');
+    expect(calls[3]?.url.startsWith(`/api/projects/${projectId}/history?`)).toBe(true);
   });
 
   it('accepts a bodyless 204 when deleting a task', async () => {

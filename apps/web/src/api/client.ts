@@ -6,6 +6,7 @@ import {
   webAuthContract,
   webInboxContract,
   webListsContract,
+  webProjectsContract,
   webSettingsContract,
   webTasksContract,
 } from '@yoink/api-contracts/web';
@@ -42,6 +43,7 @@ type ListClient = JsonifiedClient<RouterContractClient<typeof webListsContract>>
 type OrganizationClient = JsonifiedClient<RouterContractClient<typeof organizationOrpcContract>>;
 type AuthClient = JsonifiedClient<RouterContractClient<typeof authOrpcContract>>;
 type ProjectClient = JsonifiedClient<RouterContractClient<typeof projectOrpcContract>>;
+type WebProjectClient = JsonifiedClient<RouterContractClient<typeof webProjectsContract>>;
 type WorkClient = JsonifiedClient<RouterContractClient<typeof workOrpcContract>>;
 type ReviewClient = JsonifiedClient<RouterContractClient<typeof reviewOrpcContract>>;
 type NoteClient = JsonifiedClient<RouterContractClient<typeof noteOrpcContract>>;
@@ -231,8 +233,26 @@ export const authClient: AuthClient = createORPCClient(
   new OpenAPILink(authOrpcContract, { fetch: fetchWithSession })
 );
 
+/**
+ * Project catalog, create, finished tasks, and history. Review, work, process,
+ * tasks, and the rail share `['projects']`, so that list stays here. Finished
+ * tasks and history stay here until their screens move.
+ */
 export const projectClient: ProjectClient = createORPCClient(
   new OpenAPILink(projectOrpcContract, { fetch: fetchWithSession })
+);
+
+/**
+ * Project page and staged import. `/web-api` plus `/projects/{id}` is
+ * `/web-api/projects/{id}`. Open-task pages stay in Task Management order.
+ * The page splits that page into the next-action section and the other
+ * open tasks and adds the count. It does not sort.
+ */
+export const webProjectClient: WebProjectClient = createORPCClient(
+  new OpenAPILink(webProjectsContract, {
+    origin: '/web-api',
+    fetch: fetchWithSession,
+  })
 );
 
 export const workClient: WorkClient = createORPCClient(

@@ -1,11 +1,12 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createInvitationService, type InvitationService } from './invitation-service.js';
+import { createInvitationService, type InvitationService } from './handle-invitation.js';
 import { createFakeInvitationStore } from '../infrastructure/fake-invitation-store.js';
 import { createFakeOrganizationStore } from '../infrastructure/fake-organization-store.js';
 import { createFakeOrganizationMembershipStore } from '../infrastructure/fake-organization-membership-store.js';
 import { createFakeClock, createFakeIdGenerator } from '@yoink/infrastructure';
-import type { Organization } from './organization.js';
-import type { OrganizationMembership } from './organization-membership.js';
+import type { Organization } from '../domain/organization.js';
+import type { OrganizationMembership } from '../domain/organization-membership.js';
+import type { OrganizationMembershipStore } from '../domain/organization-membership-store.js';
 
 const TEST_ORG: Organization = {
   id: 'org-001',
@@ -22,7 +23,7 @@ const TEST_ADMIN_MEMBERSHIP: OrganizationMembership = {
   joinedAt: '2024-01-01T00:00:00.000Z',
 };
 
-describe('InvitationService', () => {
+describe('createInvitationService', () => {
   let service: InvitationService;
   let invitationStore: ReturnType<typeof createFakeInvitationStore>;
   let organizationStore: ReturnType<typeof createFakeOrganizationStore>;
@@ -113,6 +114,8 @@ describe('InvitationService', () => {
       if (result.isErr()) {
         expect(result.error.type).toBe('INVITATION_ORG_NOT_FOUND');
       }
+      const stored = await invitationStore.findByOrganization('non-existent-org');
+      expect(stored._unsafeUnwrap()).toEqual([]);
     });
 
     it('fails when inviter is not a member', async () => {
@@ -126,6 +129,8 @@ describe('InvitationService', () => {
       if (result.isErr()) {
         expect(result.error.type).toBe('INSUFFICIENT_INVITE_PERMISSIONS');
       }
+      const stored = await invitationStore.findByOrganization(TEST_ORG.id);
+      expect(stored._unsafeUnwrap()).toEqual([]);
     });
 
     it('fails when inviter is only a member (not admin)', async () => {
@@ -149,6 +154,8 @@ describe('InvitationService', () => {
       if (result.isErr()) {
         expect(result.error.type).toBe('INSUFFICIENT_INVITE_PERMISSIONS');
       }
+      const stored = await invitationStore.findByOrganization(TEST_ORG.id);
+      expect(stored._unsafeUnwrap()).toEqual([]);
     });
 
     describe('admin-created invitations (skipPermissionCheck)', () => {
@@ -464,6 +471,123 @@ describe('InvitationService', () => {
       if (result.isErr()) {
         expect(result.error.type).toBe('OWNER_INVITATION_ADMIN_ONLY');
       }
+      const stored = await invitationStore.findById('550e8400-e29b-41d4-a716-446655440201');
+      expect(stored._unsafeUnwrap()?.code).toBe('OWNER002');
+    });
+
+    it('refuses a missing workspace before reading membership', async () => {
+      const local = createInvitationService({
+        invitationStore,
+        organizationStore: createFakeOrganizationStore({ initialOrganizations: [] }),
+        membershipStore: {
+          findByUserAndOrg: () => {
+            throw new Error('membership is not read');
+          },
+        } as unknown as OrganizationMembershipStore,
+        clock,
+        idGenerator,
+        codeGenerator,
+      });
+
+      const result = await local.createInvitation({
+        organizationId: TEST_ORG.id,
+        invitedByUserId: null,
+        role: 'member',
+        skipPermissionCheck: true,
+      });
+
+      expect(result.isErr() && result.error.type).toBe('INVITATION_ORG_NOT_FOUND');
+    });
+
+    it('refuses a missing inviter before reading membership', async () => {
+      const local = createInvitationService({
+        invitationStore,
+        organizationStore,
+        membershipStore: {
+          findByUserAndOrg: () => {
+            throw new Error('membership is not read');
+          },
+        } as unknown as OrganizationMembershipStore,
+        clock,
+        idGenerator,
+        codeGenerator,
+      });
+
+      const result = await local.createInvitation({
+        organizationId: TEST_ORG.id,
+        invitedByUserId: null,
+        role: 'member',
+      });
+
+      expect(result.isErr() && result.error.type).toBe('INSUFFICIENT_INVITE_PERMISSIONS');
+      const stored = await invitationStore.findByOrganization(TEST_ORG.id);
+      expect(stored._unsafeUnwrap()).toEqual([]);
+    });
+
+    it('refuses an owner invite before reading membership', async () => {
+      await invitationStore.save({
+        id: '550e8400-e29b-41d4-a716-446655440202',
+        code: 'OWNER003',
+        email: 'libby@example.com',
+        organizationId: TEST_ORG.id,
+        invitedByUserId: null,
+        role: 'owner',
+        expiresAt: '2024-01-22T12:00:00.000Z',
+        acceptedAt: null,
+        acceptedByUserId: null,
+        replacedAt: null,
+        createdAt: '2024-01-15T12:00:00.000Z',
+      });
+      const local = createInvitationService({
+        invitationStore,
+        organizationStore,
+        membershipStore: {
+          findByUserAndOrg: () => {
+            throw new Error('membership is not read');
+          },
+        } as unknown as OrganizationMembershipStore,
+        clock,
+        idGenerator,
+        codeGenerator,
+      });
+
+      const result = await local.revokeInvitation({
+        invitationId: '550e8400-e29b-41d4-a716-446655440202',
+        revokedByUserId: 'user-admin',
+      });
+
+      expect(result.isErr() && result.error.type).toBe('OWNER_INVITATION_ADMIN_ONLY');
+      const stored = await invitationStore.findById('550e8400-e29b-41d4-a716-446655440202');
+      expect(stored._unsafeUnwrap()?.code).toBe('OWNER003');
+    });
+
+    it('refuses a member before deleting', async () => {
+      await membershipStore.save({
+        id: 'membership-002',
+        userId: 'user-member',
+        organizationId: TEST_ORG.id,
+        role: 'member',
+        isPersonalOrg: false,
+        joinedAt: '2024-01-02T00:00:00.000Z',
+      });
+      const created = await service.createInvitation({
+        organizationId: TEST_ORG.id,
+        invitedByUserId: 'user-admin',
+        role: 'member',
+      });
+      expect(created.isOk()).toBe(true);
+      if (created.isErr()) {
+        return;
+      }
+
+      const result = await service.revokeInvitation({
+        invitationId: created.value.id,
+        revokedByUserId: 'user-member',
+      });
+
+      expect(result.isErr() && result.error.type).toBe('INSUFFICIENT_INVITE_PERMISSIONS');
+      const stored = await invitationStore.findById(created.value.id);
+      expect(stored._unsafeUnwrap()?.code).toBe('TESTCODE');
     });
   });
 });

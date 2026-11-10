@@ -24,7 +24,7 @@ export {
 export {
   createInvitationService,
   type InvitationService,
-} from './invitation-service.js';
+} from '../application/handle-invitation.js';
 
 // Authentication services
 export { createTokenService, type TokenService } from './token-service.js';

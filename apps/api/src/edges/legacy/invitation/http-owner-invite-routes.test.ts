@@ -41,7 +41,7 @@ import { createAdminSessionService } from '../../../access/domain/index.js';
 import { createAdminSessionParticipant } from '../../../access/infrastructure/admin-session-participant.js';
 import { createNodeAdminSessionCrypto } from '../../../access/infrastructure/node-admin-session-crypto.js';
 import { createAdminService } from '../../../access/application/handle-admin.js';
-import { createInvitationService } from '../../../access/domain/invitation-service.js';
+import { createInvitationService } from '../../../access/application/handle-invitation.js';
 import { createUserService } from '../../../access/domain/user-service.js';
 import { createMembershipService } from '../../../access/domain/membership-service.js';
 import { createOrganizationService } from '../../../access/domain/organization-service.js';

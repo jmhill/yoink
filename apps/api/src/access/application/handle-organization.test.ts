@@ -1,9 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createOrganizationService, type OrganizationService } from './organization-service.js';
+import { errAsync } from 'neverthrow';
+import { createOrganizationService, type OrganizationService } from './handle-organization.js';
 import { createFakeOrganizationStore } from '../infrastructure/fake-organization-store.js';
 import { createFakeClock, createFakeIdGenerator } from '@yoink/infrastructure';
-import type { Organization } from './organization.js';
-import type { OrganizationStore } from './organization-store.js';
+import type { Organization } from '../domain/organization.js';
+import type { OrganizationStore } from '../domain/organization-store.js';
 
 const TEST_DATE = new Date('2024-01-15T10:00:00.000Z');
 
@@ -150,6 +151,32 @@ describe('OrganizationService', () => {
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
         expect(result.error.type).toBe('ORGANIZATION_STORAGE_ERROR');
+      }
+    });
+
+    it('maps a unit-of-work storage failure to the same organization storage error', async () => {
+      const failingService = createOrganizationService({
+        organizationStore,
+        clock: createFakeClock(TEST_DATE),
+        idGenerator: createFakeIdGenerator(['gen-id']),
+        unitOfWork: {
+          commit: () =>
+            errAsync({
+              kind: 'Storage',
+              owner: 'access',
+              owners: ['access'],
+              reason: 'disk',
+            }),
+        },
+      });
+
+      const result = await failingService.createOrganization({ name: 'Will Fail' });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr() && result.error.type === 'ORGANIZATION_STORAGE_ERROR') {
+        expect(result.error.message).toBe('Failed to save organization');
+      } else {
+        expect(result.isErr() && result.error.type).toBe('ORGANIZATION_STORAGE_ERROR');
       }
     });
   });

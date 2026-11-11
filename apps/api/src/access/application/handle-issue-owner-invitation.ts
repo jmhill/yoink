@@ -1,5 +1,5 @@
 import { errAsync, type ResultAsync } from 'neverthrow';
-import { normalizeEmail } from '@yoink/api-contracts';
+import { normalizeEmail } from '../domain/email.js';
 import type { OrganizationStore } from '../domain/organization-store.js';
 import type { OrganizationMembershipStore } from '../domain/organization-membership-store.js';
 import type { InvitationStore } from '../domain/invitation-store.js';

@@ -1,5 +1,5 @@
 import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
-import { normalizeEmail } from '@yoink/api-contracts';
+import { normalizeEmail } from '../domain/email.js';
 import type { Clock } from '../../kernel/clock.js';
 import type { IdGenerator } from '../../kernel/id-generator.js';
 import type { UnitOfWork } from '../../kernel/unit-of-work.js';

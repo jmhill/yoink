@@ -1,4 +1,4 @@
-import { memberDisplayName } from '@yoink/api-contracts';
+import { memberDisplayName } from '../domain/member-document.js';
 import type { Clock } from '../../kernel/clock.js';
 import type { IdGenerator } from '../../kernel/id-generator.js';
 import type { ResultAsync } from 'neverthrow';

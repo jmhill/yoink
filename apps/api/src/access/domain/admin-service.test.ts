@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { BOT_CANNOT_BE_OWNER_MESSAGE } from '@yoink/api-contracts';
+import { BOT_CANNOT_BE_OWNER_MESSAGE } from './organization-errors.js';
 import { createAdminService, type AdminService } from '../application/handle-admin.js';
 import { createFakeOrganizationStore } from '../infrastructure/fake-organization-store.js';
 import { createFakeOrganizationMembershipStore } from '../infrastructure/fake-organization-membership-store.js';

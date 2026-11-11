@@ -1,8 +1,8 @@
 import { errAsync, type ResultAsync } from 'neverthrow';
-import type { Member } from '@yoink/api-contracts';
+import { toMember, type Member } from '../domain/member-document.js';
 import type { OrganizationMembership } from '../domain/organization-membership.js';
 import type { User } from '../domain/user.js';
-import { principalKindOf, type PrincipalKind } from '../domain/user.js';
+import type { PrincipalKind } from '../domain/user.js';
 import type { OwnershipTransferPlan } from '../domain/owner-presence.js';
 import type { OwnershipTransferred } from '../domain/membership-events.js';
 import { decideTransferOwnership, type TransferOwnershipError } from '../domain/decide-transfer-ownership.js';
@@ -48,15 +48,6 @@ export type HandleTransferOwnershipError =
 export type TransferOwnershipHandler = (
   request: TransferOwnershipRequest
 ) => ResultAsync<TransferOwnershipView, HandleTransferOwnershipError>;
-
-const toMember = (user: User, membership: OrganizationMembership): Member => ({
-  userId: user.id,
-  email: user.email,
-  name: user.name,
-  kind: principalKindOf(user),
-  role: membership.role,
-  joinedAt: membership.joinedAt,
-});
 
 export const handleTransferOwnership = (
   request: TransferOwnershipRequest,

@@ -1,5 +1,4 @@
 import { errAsync, okAsync, ResultAsync } from 'neverthrow';
-import type { Project } from '@yoink/api-contracts';
 import type { Clock } from '../../kernel/clock.js';
 import type { IdGenerator } from '../../kernel/id-generator.js';
 import type { PasswordHasher } from '../../kernel/password-hasher.js';
@@ -9,6 +8,7 @@ import {
   type ProjectNotFoundError,
   type StorageError,
 } from '../../modules/task-management/domain/messages/project-errors.js';
+import type { AdminProject } from '../domain/admin-project.js';
 import type { AdminPlan } from '../domain/admin-plan.js';
 import type { ApiToken } from '../domain/api-token.js';
 import {
@@ -48,7 +48,7 @@ import type { UserStore } from '../domain/user-store.js';
 
 /** The two project reads and writes admin still calls. The task-management store stays internal. */
 type AdminProjectStore = {
-  findById(id: string): ResultAsync<Project | null, StorageError>;
+  findById(id: string): ResultAsync<AdminProject | null, StorageError>;
   updateCreatedAt(
     id: string,
     createdAt: string
@@ -112,7 +112,7 @@ export type AdminService = {
   updateProjectCreatedAt(
     id: string,
     createdAt: string
-  ): ResultAsync<Project, AdminServiceError>;
+  ): ResultAsync<AdminProject, AdminServiceError>;
   listTokens(organizationId: string): ResultAsync<ApiTokenView[], TokenStorageError>;
   createToken(command: AdminCreateTokenCommand): ResultAsync<CreateTokenResult, AdminServiceError>;
   revokeToken(id: string): ResultAsync<void, TokenStorageError>;

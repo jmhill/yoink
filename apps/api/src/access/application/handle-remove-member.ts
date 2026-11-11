@@ -1,5 +1,5 @@
 import { errAsync, type ResultAsync } from 'neverthrow';
-import { memberDisplayName } from '@yoink/api-contracts';
+import { memberDisplayName } from '../domain/member-document.js';
 import type { OrganizationMembership } from '../domain/organization-membership.js';
 import type { User } from '../domain/user.js';
 import type { MemberLeft, MemberRemoved } from '../domain/membership-events.js';

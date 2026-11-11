@@ -1,11 +1,12 @@
-import {
-  INVITATION_REPLACED_MESSAGE,
-  OWNER_INVITE_ADMIN_ONLY_MESSAGE,
-  OWNER_INVITE_WRONG_EMAIL_MESSAGE,
-  PERSONAL_WORKSPACE_OWNER_INVITE_MESSAGE,
-  WORKSPACE_ALREADY_HAS_OWNER_MESSAGE,
-} from '@yoink/api-contracts';
 import type { OrganizationStorageError, MembershipStorageError } from './organization-errors.js';
+
+export const INVITATION_REPLACED_MESSAGE = 'This invite was replaced. Ask for a new link.';
+export const OWNER_INVITE_ADMIN_ONLY_MESSAGE =
+  'Only the Yoink admin can change the owner invite.';
+export const OWNER_INVITE_WRONG_EMAIL_MESSAGE = 'This invite is for a different email.';
+export const PERSONAL_WORKSPACE_OWNER_INVITE_MESSAGE =
+  "Personal workspaces can't get an owner invite.";
+export const WORKSPACE_ALREADY_HAS_OWNER_MESSAGE = 'This workspace already has an owner.';
 
 // ============================================================================
 // Invitation Storage Errors

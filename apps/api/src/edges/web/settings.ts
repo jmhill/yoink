@@ -4,7 +4,8 @@ import type { AgentService, InvitationService } from '../../access/domain/index.
 import type { MembershipService } from '../../access/application/handle-membership.js';
 import type { SessionService } from '../../access/application/handle-session.js';
 import type { UserService } from '../../access/application/handle-user.js';
-import { principalKindOf } from '../../access/domain/user.js';
+import { memberFromListed } from '../../access/domain/member-document.js';
+import { toContractMember, toContractMemberTransfer } from '../_shared/map-access-document.js';
 import type { ChangeMemberRoleHandler } from '../../access/application/handle-change-member-role.js';
 import type { ReissueAgentToken } from '../../access/application/handle-reissue-agent-token.js';
 import type { RemoveMemberHandler } from '../../access/application/handle-remove-member.js';
@@ -100,7 +101,7 @@ export const createWebSettingsHandlers = (deps: WebSettingsDependencies) => {
         actorKind: context.request.authContext.principalKind,
       });
       return result.match(
-        (view) => view,
+        (view) => toContractMemberTransfer(view),
         (error) => {
           throw transferOwnershipErrorResponse(error);
         }
@@ -137,17 +138,9 @@ export const createWebSettingsHandlers = (deps: WebSettingsDependencies) => {
       }
 
       const usersById = new Map(usersResult.value.map((user) => [user.id, user]));
-      const members = membersResult.value.map((membership) => {
-        const user = usersById.get(membership.userId);
-        return {
-          userId: membership.userId,
-          email: user?.email ?? 'unknown',
-          name: user?.name,
-          kind: user ? principalKindOf(user) : ('human' as const),
-          role: membership.role,
-          joinedAt: membership.joinedAt,
-        };
-      });
+      const members = membersResult.value.map((membership) =>
+        toContractMember(memberFromListed(membership, usersById.get(membership.userId)))
+      );
       return { members };
     }),
     changeMemberRole: web.changeMemberRole.handler(async ({ input, context }) => {
@@ -160,7 +153,7 @@ export const createWebSettingsHandlers = (deps: WebSettingsDependencies) => {
         principalKind: context.request.authContext.principalKind,
       });
       return result.match(
-        (member) => ({ member }),
+        (member) => ({ member: toContractMember(member) }),
         (error) => {
           throw changeMemberRoleErrorResponse(error, context.request.authContext.userId);
         }

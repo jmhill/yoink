@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { OWNER_INVITE_WRONG_EMAIL_MESSAGE } from '@yoink/api-contracts';
+import { OWNER_INVITE_WRONG_EMAIL_MESSAGE } from '../domain/invitation-errors.js';
 import { handleAcceptInvitation } from './handle-accept-invitation.js';
 import { createFakeInvitationStore } from '../infrastructure/fake-invitation-store.js';
 import { createFakeOrganizationMembershipStore } from '../infrastructure/fake-organization-membership-store.js';

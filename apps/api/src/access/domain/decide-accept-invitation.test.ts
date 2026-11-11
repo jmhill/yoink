@@ -3,7 +3,7 @@ import {
   INVITATION_REPLACED_MESSAGE,
   OWNER_INVITE_WRONG_EMAIL_MESSAGE,
   WORKSPACE_ALREADY_HAS_OWNER_MESSAGE,
-} from '@yoink/api-contracts';
+} from './invitation-errors.js';
 import { decideAcceptInvitation } from './decide-accept-invitation.js';
 import type { Invitation } from './invitation.js';
 import type { OrganizationMembership } from './organization-membership.js';

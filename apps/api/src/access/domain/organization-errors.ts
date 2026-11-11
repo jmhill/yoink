@@ -1,43 +1,23 @@
-import {
-  ALREADY_OWNER_MESSAGE,
-  BOT_CANNOT_BE_ADMIN_MESSAGE,
-  BOT_CANNOT_BE_OWNER_MESSAGE,
-  BOT_CANNOT_CHANGE_ROLES_MESSAGE,
-  BOT_CANNOT_TRANSFER_OWNERSHIP_MESSAGE,
-  CANNOT_CHANGE_OWN_ROLE_MESSAGE,
-  CANNOT_REMOVE_SELF_MESSAGE,
-  NOT_CURRENT_OWNER_MESSAGE,
-  OWNER_MUST_TRANSFER_MAKE_OWNER_MESSAGE,
-  OWNER_MUST_TRANSFER_MESSAGE,
-  OWNER_ROLE_LOCKED_MESSAGE,
-  PERSONAL_WORKSPACE_TRANSFER_MESSAGE,
-  REISSUE_NOT_ALLOWED_MESSAGE,
-  REMOVE_NOT_ALLOWED_MESSAGE,
-  ROLE_CHANGE_NOT_ALLOWED_MESSAGE,
-  TARGET_NOT_WORKSPACE_MEMBER_MESSAGE,
-  THE_OWNER_CANT_BE_REMOVED_MESSAGE,
-} from '@yoink/api-contracts';
 import type { UserNotFoundError, UserServiceError } from './user-errors.js';
 
-export {
-  ALREADY_OWNER_MESSAGE,
-  BOT_CANNOT_BE_ADMIN_MESSAGE,
-  BOT_CANNOT_BE_OWNER_MESSAGE,
-  BOT_CANNOT_CHANGE_ROLES_MESSAGE,
-  BOT_CANNOT_TRANSFER_OWNERSHIP_MESSAGE,
-  CANNOT_CHANGE_OWN_ROLE_MESSAGE,
-  CANNOT_REMOVE_SELF_MESSAGE,
-  NOT_CURRENT_OWNER_MESSAGE,
-  OWNER_MUST_TRANSFER_MAKE_OWNER_MESSAGE,
-  OWNER_MUST_TRANSFER_MESSAGE,
-  OWNER_ROLE_LOCKED_MESSAGE,
-  PERSONAL_WORKSPACE_TRANSFER_MESSAGE,
-  REISSUE_NOT_ALLOWED_MESSAGE,
-  REMOVE_NOT_ALLOWED_MESSAGE,
-  ROLE_CHANGE_NOT_ALLOWED_MESSAGE,
-  TARGET_NOT_WORKSPACE_MEMBER_MESSAGE,
-  THE_OWNER_CANT_BE_REMOVED_MESSAGE,
-};
+export const ALREADY_OWNER_MESSAGE = "You're already the owner.";
+export const BOT_CANNOT_BE_ADMIN_MESSAGE = "A bot can't be an admin.";
+export const BOT_CANNOT_BE_OWNER_MESSAGE = "A bot can't be the owner.";
+export const BOT_CANNOT_CHANGE_ROLES_MESSAGE = "Bots can't change roles.";
+export const BOT_CANNOT_TRANSFER_OWNERSHIP_MESSAGE = "Bots can't hand over ownership.";
+export const CANNOT_CHANGE_OWN_ROLE_MESSAGE = "You can't change your own role.";
+export const CANNOT_REMOVE_SELF_MESSAGE = "You can't remove yourself. Use Leave instead.";
+export const NOT_CURRENT_OWNER_MESSAGE = 'Only the owner can hand over ownership.';
+export const OWNER_MUST_TRANSFER_MAKE_OWNER_MESSAGE =
+  'Transfer ownership first. Use Make owner on another member.';
+export const OWNER_MUST_TRANSFER_MESSAGE = 'Hand over ownership first.';
+export const OWNER_ROLE_LOCKED_MESSAGE = "The owner's role can't be changed.";
+export const PERSONAL_WORKSPACE_TRANSFER_MESSAGE = "Personal workspaces can't be handed over.";
+export const REISSUE_NOT_ALLOWED_MESSAGE = 'Only the owner and admins can issue new tokens.';
+export const REMOVE_NOT_ALLOWED_MESSAGE = 'Only the owner and admins can remove members.';
+export const ROLE_CHANGE_NOT_ALLOWED_MESSAGE = 'Only the owner and admins can change roles.';
+export const TARGET_NOT_WORKSPACE_MEMBER_MESSAGE = 'The new owner has to be a member first.';
+export const THE_OWNER_CANT_BE_REMOVED_MESSAGE = "The owner can't be removed.";
 
 // ============================================================================
 // Organization Storage Errors

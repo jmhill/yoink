@@ -12,6 +12,7 @@ import {
 } from '@yoink/api-contracts/admin';
 import { adminRequestLog } from './log-context.js';
 import type { AdminService } from '../../access/application/handle-admin.js';
+import { toContractAdminProject } from '../_shared/map-access-document.js';
 import type { AdminServiceError } from '../../access/domain/admin-errors.js';
 import type { AdminSessionService, InvitationService } from '../../access/domain/index.js';
 import type { Invitation } from '../../access/domain/invitation.js';
@@ -619,7 +620,7 @@ export const registerAdminRoutes = async (
       async ({ input }) => {
         const result = await adminService.updateProjectCreatedAt(input.id, input.createdAt);
         return result.match(
-          (project) => project,
+          (project) => toContractAdminProject(project),
           (error) => {
             throw updateProjectErrorResponse(error);
           }

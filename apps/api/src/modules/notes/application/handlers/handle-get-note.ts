@@ -1,5 +1,5 @@
 import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
-import type { Note } from '@yoink/api-contracts';
+import type { Note } from '../../domain/model/note.js';
 import type { GetNoteQuery } from '../../domain/messages/note-queries.js';
 import {
   noteNotFoundError,

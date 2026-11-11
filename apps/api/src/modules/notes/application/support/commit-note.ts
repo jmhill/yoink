@@ -10,7 +10,7 @@ import {
   type StaleNoteError,
   type StorageError,
 } from '../../domain/messages/note-errors.js';
-import type { Note } from '@yoink/api-contracts';
+import type { Note } from '../../domain/model/note.js';
 
 export const noteWork = <T>(input: {
   result: T;

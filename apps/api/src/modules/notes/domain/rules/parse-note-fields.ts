@@ -1,5 +1,5 @@
 import { err, ok, type Result } from 'neverthrow';
-import { NOTE_BODY_MAX_LENGTH, NOTE_COPY_SUFFIX, NOTE_TITLE_MAX_LENGTH } from '@yoink/api-contracts';
+import { NOTE_BODY_MAX_LENGTH, NOTE_COPY_SUFFIX, NOTE_TITLE_MAX_LENGTH } from '../model/note.js';
 import {
   noteBodyTooLongError,
   noteTitleBlankError,

@@ -1,4 +1,4 @@
-import type { Note, NoteListItem } from '@yoink/api-contracts';
+import type { Note, NoteListItem } from '../domain/model/note.js';
 import type { ResultAsync } from 'neverthrow';
 import type { KeysetCursor } from '../../../kernel/listing/domain/keyset-cursor.js';
 import type { KeysetRows } from '../../../kernel/listing/domain/listed-page.js';

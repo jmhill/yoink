@@ -1,5 +1,5 @@
 import { errAsync, okAsync, Result, ResultAsync } from 'neverthrow';
-import type { Note } from '@yoink/api-contracts';
+import type { Note } from '../../domain/model/note.js';
 import type { Database } from '../../../../platform/database/types.js';
 import { pageSqlite } from '../../../../platform/sql/page-sqlite.js';
 import { notesChangedDirection, projectNotesDirection } from '../../../../kernel/listing/domain/list-keys.js';

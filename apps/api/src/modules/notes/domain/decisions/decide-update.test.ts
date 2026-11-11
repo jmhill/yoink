@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { Note } from '@yoink/api-contracts';
+import type { Note } from '../model/note.js';
 import { decideUpdateNote } from './decide-update.js';
 import type { UpdateNoteCommand } from '../messages/note-commands.js';
 

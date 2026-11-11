@@ -1,6 +1,6 @@
 import { err, ok, type Result } from 'neverthrow';
 import { z } from 'zod';
-import type { Note } from '@yoink/api-contracts';
+import type { Note } from '../../../domain/model/note.js';
 import { storageError, type StorageError } from '../../../domain/messages/note-errors.js';
 import type { NoteChangeRow } from '../../../domain/model/note-change-row.js';
 

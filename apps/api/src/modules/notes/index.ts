@@ -1,4 +1,12 @@
 export { createNotes, type Notes } from './application/create-notes.js';
+export type {
+  Note,
+  NoteChange,
+  NoteChangePage,
+  NoteDeletedChange,
+  NoteListItem,
+  NoteUpsertedChange,
+} from './domain/model/note.js';
 export type { NoteIntegrationEvent } from './application/integration-events/to-note-integration-event.js';
 export type {
   DesignateNotesMirrorBot,

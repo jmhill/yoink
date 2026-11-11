@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { Note } from '@yoink/api-contracts';
+import type { Note } from '../model/note.js';
 import { decideImportNote } from './decide-import.js';
 import type { ImportNoteFromObsidianCommand } from '../messages/note-commands.js';
 

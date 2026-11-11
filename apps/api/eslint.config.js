@@ -113,11 +113,8 @@ const elements = [
   // M5.11-task-management removed the src/modules/task-management/** current
   // element. The old src/tasks, src/projects, src/lists, and src/work patterns
   // stay for boundary fixtures.
-  // M5.7 moved notes. Target layer rules disallow @yoink/api-contracts, which
-  // this module still imports until M5.11-notes. This descriptor is first, so
-  // the current element wins. M5.11-notes removes it. The old src/notes/**
-  // pattern stays for boundary fixtures.
-  { type: 'notes', pattern: 'src/modules/notes/**', mode: 'full' },
+  // M5.11-notes removed the src/modules/notes/** current element.
+  // The old src/notes/** pattern stays for boundary fixtures.
   // M5.10-review moved review. Target layer rules disallow @yoink/api-contracts,
   // which this module still imports until M5.11-review. This descriptor is
   // first, so the current element wins. M5.11-review removes it. The old

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { errAsync, okAsync } from 'neverthrow';
-import type { Note } from '@yoink/api-contracts';
+import type { Note } from '../../domain/model/note.js';
 import type { UnitOfWork } from '../../../../kernel/unit-of-work.js';
 import { createInMemoryUnitOfWork } from '../../../../platform/unit-of-work/in-memory-unit-of-work.js';
 import { createFakeNotesBackend } from '../../infrastructure/fakes/fake-notes-backend.js';

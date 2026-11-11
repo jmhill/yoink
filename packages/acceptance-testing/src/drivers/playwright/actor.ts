@@ -95,6 +95,7 @@ import {
 import {
   isLiveTaskOrListGet,
   isOwnedProjectAliasUrl,
+  isProjectNoteItemUrl,
   isProjectStatusUrl,
   isTaskCollectionUrl,
   isTaskItemUrl,
@@ -3155,7 +3156,7 @@ export const createPlaywrightActor = (
       await row.scrollIntoViewIfNeeded();
       const responsePromise = page.waitForResponse(
         (response) =>
-          /\/api\/projects\/[^/]+\/notes\/[^/]+$/.test(new URL(response.url()).pathname) &&
+          isProjectNoteItemUrl(response.url()) &&
           response.request().method() === 'GET' &&
           response.status() === 200
       );
@@ -3243,7 +3244,7 @@ export const createPlaywrightActor = (
     async seeNewerNoteVersion(): Promise<void> {
       const responsePromise = page.waitForResponse(
         (response) =>
-          /\/api\/projects\/[^/]+\/notes\/[^/]+$/.test(new URL(response.url()).pathname) &&
+          isProjectNoteItemUrl(response.url()) &&
           response.request().method() === 'GET' &&
           response.status() === 200
       );
@@ -3269,7 +3270,7 @@ export const createPlaywrightActor = (
       await expect(page.locator('[data-note-delete-confirm]')).toBeVisible();
       const responsePromise = page.waitForResponse(
         (response) =>
-          /\/api\/projects\/[^/]+\/notes\/[^/]+$/.test(new URL(response.url()).pathname) &&
+          isProjectNoteItemUrl(response.url()) &&
           response.request().method() === 'DELETE' &&
           response.status() === 204
       );
@@ -4144,6 +4145,40 @@ export const createPlaywrightActor = (
       }
       if (aliasHits.length > 0) {
         throw new Error(`Project page still called the alias: ${aliasHits.join(', ')}`);
+      }
+    },
+
+    async shouldKeepProjectNotesOnWebEdge(): Promise<void> {
+      const project = await this.createProject({ name: 'Harbor notes' });
+      const aliasHits: string[] = [];
+      const onRequest = (request: { method: () => string; url: () => string }) => {
+        const path = new URL(request.url()).pathname;
+        if (/^\/api\/projects\/[^/]+\/notes(?:\/|$)/.test(path)) {
+          aliasHits.push(`${request.method()} ${path}`);
+        }
+      };
+      page.on('request', onRequest);
+      try {
+        const list = page.waitForRequest(
+          (request) =>
+            request.method() === 'GET' &&
+            new URL(request.url()).pathname === `/web-api/projects/${project.id}/notes`
+        );
+        await page.goto(`/projects/${project.id}`);
+        await list;
+        await this.shouldSeeNotesReady();
+        const create = page.waitForRequest(
+          (request) =>
+            request.method() === 'POST' &&
+            new URL(request.url()).pathname === `/web-api/projects/${project.id}/notes`
+        );
+        await this.addNoteOnProject({ title: 'Kickoff', body: 'First line' });
+        await create;
+      } finally {
+        page.off('request', onRequest);
+      }
+      if (aliasHits.length > 0) {
+        throw new Error(`Project notes still called the alias: ${aliasHits.join(', ')}`);
       }
     },
 

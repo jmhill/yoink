@@ -21,7 +21,7 @@ export const isProjectItemUrl = (url: string): boolean => {
 
 /**
  * Project-page and staged-import calls that must leave the alias.
- * The shared catalog, finished tasks, history, and notes stay.
+ * The shared catalog stays. Project notes on this page are the notes screen.
  */
 export const isOwnedProjectAliasUrl = (url: string): boolean => {
   const path = requestPathname(url);
@@ -45,6 +45,9 @@ export const isOwnedProjectAliasUrl = (url: string): boolean => {
   }
   if (rest === 'tasks') {
     return !search.includes('finished');
+  }
+  if (rest === 'notes' || rest.startsWith('notes/')) {
+    return true;
   }
   return (
     rest === 'status' ||
@@ -77,6 +80,15 @@ export const isTaskCollectionUrl = (url: string): boolean => {
 export const isTaskItemUrl = (url: string): boolean => {
   const path = requestPathname(url);
   return path.startsWith('/api/tasks/') || path.startsWith('/web-api/tasks/');
+};
+
+/**
+ * One project note on the web edge or the alias.
+ * Import and changed stay `/api/notes` and do not match.
+ */
+export const isProjectNoteItemUrl = (url: string): boolean => {
+  const path = requestPathname(url);
+  return /^\/(?:api|web-api)\/projects\/[^/]+\/notes\/[^/]+$/.test(path);
 };
 
 /** Named-list collection on the web edge or the alias. */

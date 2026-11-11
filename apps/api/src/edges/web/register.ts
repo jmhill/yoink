@@ -11,6 +11,8 @@ import { createWebAuthHandlers, type WebAuthDependencies } from './auth.js';
 import { WEB_API_PREFIX, dispatchWebApi } from './dispatch.js';
 import { createWebHistoryHandlers, type WebHistoryDependencies } from './history.js';
 import { createWebInboxHandlers, type WebInboxCaptures } from './inbox.js';
+import { createWebNotesHandlers, type WebNotesDependencies } from './notes.js';
+import { noteRequestValidationError } from './notes-errors.js';
 import { webRequestLog } from './log-context.js';
 import { createWebProcessHandlers, type WebProcessDependencies } from './process.js';
 import { createWebReviewHandlers, type WebReviewDependencies } from './review.js';
@@ -39,7 +41,7 @@ export type WebApiDependencies = {
   tasksLists?: WebTasksListsDependencies;
   /**
    * Project page and staged import. Public v1 and the `/api` alias keep the
-   * same handlers. Notes stay off this edge.
+   * same handlers. Project notes are the notes edge.
    */
   projectPage?: WebProjectPageDependencies;
   /**
@@ -52,6 +54,11 @@ export type WebApiDependencies = {
    * the same review queries at their current paths.
    */
   review?: WebReviewDependencies;
+  /**
+   * Project notes list, get, create, update, and delete. Public v1 and the
+   * `/api` alias keep the same commands. Import and changed stay on `/api`.
+   */
+  notes?: WebNotesDependencies;
   /**
    * Process, trash, and snooze. Public v1 and the `/api` alias keep the same
    * commands. Inbox list and create stay on `captures`.
@@ -150,6 +157,7 @@ const mountWebAuth = async (
  * the project page and staged import when `projectPage` is set,
  * project history and finished tasks when `history` is set,
  * review list and done when `review` is set,
+ * project notes when `notes` is set,
  * process, trash, and snooze when `process` is set,
  * the Work screen and work lists when `work` is set,
  * settings and organizations when `settings` is set,
@@ -233,6 +241,18 @@ export const registerWebApi = async (
     };
     at('/review/done');
     at('/review');
+  }
+
+  if (deps.notes !== undefined) {
+    const notes = new OpenAPIHandler(
+      createWebNotesHandlers(deps.notes),
+      openApiHandlerOptions(noteRequestValidationError)
+    );
+    const at = (method: WebMethod | WebMethod[], path: string) => {
+      mount(app, notes, method, `${WEB_API_PREFIX}${path}`, deps.combinedAuth);
+    };
+    at(['GET', 'POST'], '/projects/:id/notes');
+    at(['GET', 'PATCH', 'DELETE'], '/projects/:id/notes/:noteId');
   }
 
   if (deps.process !== undefined) {

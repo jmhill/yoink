@@ -10,6 +10,7 @@ import {
   reviewClient,
   organizationClient,
   settingsClient,
+  noteClient,
   projectClient,
   taskClient,
   webHistoryClient,
@@ -276,6 +277,58 @@ describe('web OpenAPI client', () => {
     expect(calls[0]?.url.startsWith(`/web-api/projects/${projectId}/history?`)).toBe(true);
     expect(calls[1]?.url.startsWith(`/web-api/projects/${projectId}/finished?`)).toBe(true);
     expect(calls[2]?.url.startsWith(`/api/projects/${projectId}/history?`)).toBe(true);
+  });
+
+  it('calls project notes on /web-api', async () => {
+    const calls: { url: string; method: string }[] = [];
+    const projectId = '550e8400-e29b-41d4-a716-446655440041';
+    const noteId = '550e8400-e29b-41d4-a716-446655440042';
+    const note = {
+      id: noteId,
+      organizationId: '550e8400-e29b-41d4-a716-446655440001',
+      projectId,
+      title: 'Kickoff',
+      body: 'First line',
+      version: '1',
+      createdAt: '2024-06-15T12:00:00.000Z',
+      createdById: '550e8400-e29b-41d4-a716-446655440002',
+      createdByName: 'Alice',
+      updatedAt: '2024-06-15T12:00:00.000Z',
+      updatedById: '550e8400-e29b-41d4-a716-446655440002',
+      updatedByName: 'Alice',
+    };
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
+      calls.push({ url, method: init.method ?? 'GET' });
+      if ((init.method ?? 'GET') === 'DELETE') {
+        return new Response(null, { status: 204 });
+      }
+      if (url.includes('?')) {
+        return jsonResponse(200, { notes: [], hasMore: false, nextCursor: null, total: 0 });
+      }
+      return jsonResponse((init.method ?? 'GET') === 'POST' ? 201 : 200, note);
+    });
+
+    await noteClient.list({ projectId, limit: 10 });
+    await noteClient.get({ projectId, noteId });
+    await noteClient.create({ projectId, title: 'Kickoff', body: 'First line' });
+    await noteClient.update({
+      projectId,
+      noteId,
+      body: 'Next line',
+      expectedVersion: '1',
+    });
+    await noteClient.delete({ projectId, noteId });
+
+    expect(calls[0]?.url.startsWith(`/web-api/projects/${projectId}/notes?`)).toBe(true);
+    expect(calls[1]?.url).toBe(`/web-api/projects/${projectId}/notes/${noteId}`);
+    expect(calls[1]?.method).toBe('GET');
+    expect(calls[2]?.url).toBe(`/web-api/projects/${projectId}/notes`);
+    expect(calls[2]?.method).toBe('POST');
+    expect(calls[3]?.url).toBe(`/web-api/projects/${projectId}/notes/${noteId}`);
+    expect(calls[3]?.method).toBe('PATCH');
+    expect(calls[4]?.url).toBe(`/web-api/projects/${projectId}/notes/${noteId}`);
+    expect(calls[4]?.method).toBe('DELETE');
+    expect(calls.some((call) => call.url.startsWith('/api/'))).toBe(false);
   });
 
   it('trashes on /web-api and leaves the alias capture client', async () => {

@@ -3,6 +3,7 @@ import { getOpenAPIMeta } from '@orpc/openapi';
 import { describe, expect, it } from 'vitest';
 import { webAuthContract } from './auth-contract.js';
 import { webHistoryContract } from './history-contract.js';
+import { webNotesContract } from './notes-contract.js';
 import { webInboxContract } from './contract.js';
 import { webListsContract } from './lists-contract.js';
 import { webProcessContract } from './process-contract.js';
@@ -153,6 +154,23 @@ describe('web history contract', () => {
     ]);
     expect(listed.some((procedure) => procedure.path.includes('web-api'))).toBe(false);
     expect(listed.some((procedure) => procedure.path.startsWith('/api'))).toBe(false);
+  });
+});
+
+describe('web notes contract', () => {
+  it('is project note list, get, create, update, and delete, on the resource path', () => {
+    const listed = procedures(webNotesContract);
+    expect(listed).toEqual([
+      { key: 'list', method: 'GET', path: '/projects/{projectId}/notes' },
+      { key: 'get', method: 'GET', path: '/projects/{projectId}/notes/{noteId}' },
+      { key: 'create', method: 'POST', path: '/projects/{projectId}/notes' },
+      { key: 'update', method: 'PATCH', path: '/projects/{projectId}/notes/{noteId}' },
+      { key: 'delete', method: 'DELETE', path: '/projects/{projectId}/notes/{noteId}' },
+    ]);
+    expect(listed.some((procedure) => procedure.path.includes('web-api'))).toBe(false);
+    expect(listed.some((procedure) => procedure.path.startsWith('/api'))).toBe(false);
+    expect(listed.some((procedure) => procedure.path.includes('/notes/changed'))).toBe(false);
+    expect(listed.some((procedure) => procedure.path.includes('/notes/import'))).toBe(false);
   });
 });
 

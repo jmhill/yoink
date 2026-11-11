@@ -71,8 +71,9 @@
  * anchors from ADR §5.1. They are not violations. Any other reference to
  * `users` or `organizations` is. Review owns no table. The unit-of-work
  * guard table has no name until M4.1; add that name here when it exists.
- * `notes_settings` is in the map (M5.8a created it). It stays empty until
- * M5.8b. The old organization column stays the source of truth until M5.8c.
+ * `notes_settings` is in the map (M5.8a created it). M5.8b copies non-null
+ * mirror-bot ids into it. The old organization column stays the source of
+ * truth until M5.8c.
  *
  * A migration after {@link LEGACY_MIGRATION_VERSION} declares `owner` and,
  * for `platform`, a non-empty `reason` (`owner: 'platform'` / `reason: '...'`

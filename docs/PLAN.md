@@ -710,13 +710,13 @@ Status lives in that plan's execution index. These checkboxes do not repeat it.
 - [x] M5.10 Review and history (queries)
 - [ ] M5.11 Own types per module. M5.11-history is Done (#392, `ca942ac6`, Trunk 42981747783). #265 is closed. M5.11-notes is Done (#397, `70c9a28a`, Trunk 42995866984). #263 is closed. M5.11-review is Done (#398, `c4079000`, Trunk 43002280967). #264 is closed. Access remains.
 - [x] M5.12 Access: interface, unit of work, signup atomicity
-- [ ] M5.12b Replace interim access adapters with adapters over access's published queries. Depends on M5.3, M5.7, M5.10-review, and M5.12. Blocks M5.11-access and M7.5.
+- [ ] M5.12b Replace interim access adapters with adapters over access's published queries. In review. Depends on M5.3, M5.7, M5.10-review, and M5.12. Blocks M5.11-access and M7.5.
 - [x] M5.13 Access: migrate legacy services (closes 8.5.4)
 
 ### M6: Client edges - In progress
 - [x] M6.1 Extension edge (`/extension-api/v1/`)
 - [x] M6.2 Web edge foundation (`/web-api/`)
-- [ ] M6.3 Web edge screens. M6.3-history is Done (#395, `412d40ed`, Trunk 42990127379). #287 is closed. M6.3-process is In review.
+- [ ] M6.3 Web edge screens. M6.3-history is Done (#395, `412d40ed`, Trunk 42990127379). #287 is closed. M6.3-process is Done (#399, `28058d7e`, Trunk 43008726569). #281 is closed.
 - [x] M6.4 Admin edge (`/admin-api/`)
 - [ ] M6.5 Remove client-only legacy routes
 - [ ] M6.6 Remove `/api/admin/...` from the dev proxy and docs
@@ -2122,7 +2122,7 @@ When resuming work on this project:
 
 **ADR-001 is accepted.** The migration is not complete. Enforcement moves to `error` in M7.5, not in M1.
 
-Live status, merge commits, and Trunk run ids are the execution index in [the migration plan](./architecture/adr/001-migration-plan.md). The checkboxes above are the phase list. M5.8c is Done (#389, `0ba8258b`, Trunk 42965731396). #256 is closed. M5.11-history is Done (#392, `ca942ac6`, Trunk 42981747783). #265 is closed. The Turso rebuild foreign-key audit and Turso-like runner default are Done (#391, `d10bc530`, Trunk 42976221286). M6.3-history is Done (#395, `412d40ed`, Trunk 42990127379). #287 is closed. M6.3-process is In review. M5.11-notes is Done (#397, `70c9a28a`, Trunk 42995866984). #263 is closed. M5.11-review is Done (#398, `c4079000`, Trunk 43002280967). #264 is closed.
+Live status, merge commits, and Trunk run ids are the execution index in [the migration plan](./architecture/adr/001-migration-plan.md). The checkboxes above are the phase list. M5.8c is Done (#389, `0ba8258b`, Trunk 42965731396). #256 is closed. M5.11-history is Done (#392, `ca942ac6`, Trunk 42981747783). #265 is closed. The Turso rebuild foreign-key audit and Turso-like runner default are Done (#391, `d10bc530`, Trunk 42976221286). M6.3-history is Done (#395, `412d40ed`, Trunk 42990127379). #287 is closed. M6.3-process is Done (#399, `28058d7e`, Trunk 43008726569). #281 is closed. M5.11-notes is Done (#397, `70c9a28a`, Trunk 42995866984). #263 is closed. M5.11-review is Done (#398, `c4079000`, Trunk 43002280967). #264 is closed.
 
 ### Earlier focus: Judge captures/lists/task-update sandwich, then 8.5.4
 

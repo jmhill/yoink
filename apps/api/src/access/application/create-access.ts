@@ -12,10 +12,12 @@ import type { TokenService } from './handle-token.js';
 import type { UserStore } from '../domain/user-store.js';
 import type {
   AccessStorageError,
+  ActorName,
   AuthenticateSession,
   AuthenticateToken,
   CompletedSignup,
   CompleteSignupError,
+  FirstHuman,
   RecordSessionActivity,
   UserDisplayName,
 } from './access-types.js';
@@ -32,6 +34,19 @@ export type LoadOrganizationTimeZone = (
   organizationId: string
 ) => ResultAsync<string | null, AccessStorageError>;
 
+export type LoadFirstHuman = (
+  organizationId: string
+) => ResultAsync<FirstHuman | null, AccessStorageError>;
+
+export type LoadNamedAgent = (input: {
+  readonly organizationId: string;
+  readonly name: string;
+}) => ResultAsync<string | null, AccessStorageError>;
+
+export type LoadActorNames = (
+  userIds: readonly string[]
+) => ResultAsync<readonly ActorName[], AccessStorageError>;
+
 export type AccessDependencies = {
   readonly tokenService: TokenService;
   readonly sessionService: SessionService | null;
@@ -40,6 +55,9 @@ export type AccessDependencies = {
   readonly invitationStore: InvitationStore;
   readonly organizationStore: OrganizationStore;
   readonly loadOrganizationTimeZone: LoadOrganizationTimeZone;
+  readonly loadFirstHuman: LoadFirstHuman;
+  readonly loadNamedAgent: LoadNamedAgent;
+  readonly loadActorNames: LoadActorNames;
   readonly clock: Clock;
   readonly idGenerator: IdGenerator;
   readonly unitOfWork: UnitOfWork;
@@ -61,9 +79,15 @@ export type Access = {
       readonly userId: string;
       readonly organizationId: string;
     }) => ResultAsync<boolean, AccessStorageError>;
+    readonly memberIds: (
+      organizationId: string
+    ) => ResultAsync<readonly string[], AccessStorageError>;
     readonly userDisplayNames: (
       userIds: readonly string[]
     ) => ResultAsync<readonly UserDisplayName[], AccessStorageError>;
+    readonly actorNames: LoadActorNames;
+    readonly firstHuman: LoadFirstHuman;
+    readonly namedAgent: LoadNamedAgent;
   };
   readonly prepare: Record<string, never>;
 };
@@ -96,7 +120,12 @@ export const createAccess = (deps: AccessDependencies): Access => {
         deps.membershipStore
           .findByUserAndOrg(userId, organizationId)
           .map((membership) => membership !== null)
-          .mapErr(() => storage('Failed to read membership')),
+          .mapErr((error) => storage(error.message)),
+      memberIds: (organizationId) =>
+        deps.membershipStore
+          .findByOrganizationId(organizationId)
+          .map((memberships) => memberships.map((membership) => membership.userId))
+          .mapErr((error) => storage(error.message)),
       userDisplayNames: (userIds) =>
         deps.userStore
           .findByIds([...userIds])
@@ -106,7 +135,10 @@ export const createAccess = (deps: AccessDependencies): Access => {
               displayName: memberDisplayName({ email: user.email, name: user.name }),
             }))
           )
-          .mapErr(() => storage('Failed to read user names')),
+          .mapErr((error) => storage(error.message)),
+      actorNames: deps.loadActorNames,
+      firstHuman: deps.loadFirstHuman,
+      namedAgent: deps.loadNamedAgent,
     },
     prepare: {},
   };

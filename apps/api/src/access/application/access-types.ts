@@ -40,6 +40,18 @@ export type UserDisplayName = {
   readonly displayName: string;
 };
 
+/** Stored name, including a blank one, otherwise the email. A missing user is omitted. */
+export type ActorName = {
+  readonly id: string;
+  readonly name: string;
+};
+
+/** First human in an organization. A blank stored name is the email. */
+export type FirstHuman = {
+  readonly userId: string;
+  readonly name: string;
+};
+
 export type PasskeyRegistrationFailed = {
   readonly type: 'PASSKEY_REGISTRATION_FAILED';
 };

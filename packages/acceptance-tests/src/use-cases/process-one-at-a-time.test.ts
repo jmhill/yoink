@@ -290,6 +290,22 @@ usingDrivers(['playwright'] as const, (ctx) => {
       expect(trash.map((capture) => capture.content)).toEqual(['First desk']);
     }, 60_000);
 
+    it('ignores a second Delete dispatched in the same turn', async () => {
+      await alice.createCapture({ content: 'First desk' });
+      await alice.createCapture({ content: 'Second desk' });
+
+      await alice.useDesktopViewport(DESKTOP);
+      await alice.openProcess();
+      await alice.shouldSeeProcessCurrent('First desk');
+      await alice.pressProcessDeleteTwiceInOneTurn();
+      await alice.shouldSeeProcessCurrent('Second desk');
+      await alice.shouldSeeProcessLeft(1);
+      const inbox = await alice.listCaptures();
+      const trash = await alice.listTrashedCaptures();
+      expect(inbox.map((capture) => capture.content)).toEqual(['Second desk']);
+      expect(trash.map((capture) => capture.content)).toEqual(['First desk']);
+    }, 60_000);
+
     it('retries Delete after trash returns 500', async () => {
       await alice.createCapture({ content: 'Sticky clip' });
 
@@ -554,6 +570,9 @@ usingDrivers(['http'] as const, (ctx) => {
         UnsupportedOperationError
       );
       await expect(actor.pressProcessDeleteWhileTrashHeld()).rejects.toThrow(
+        UnsupportedOperationError
+      );
+      await expect(actor.pressProcessDeleteTwiceInOneTurn()).rejects.toThrow(
         UnsupportedOperationError
       );
       await expect(actor.pressProcessDeleteAfterTrashError()).rejects.toThrow(

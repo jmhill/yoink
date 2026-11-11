@@ -2263,6 +2263,13 @@ export type BrowserActorOperations = {
   pressProcessDeleteWhileTrashHeld(): Promise<void>;
 
   /**
+   * Dispatch two Delete keydowns in one turn, before React drops the
+   * listener. Hold the trash POST. Exactly one trash POST is sent and
+   * the next card stays current. Then release the response.
+   */
+  pressProcessDeleteTwiceInOneTurn(): Promise<void>;
+
+  /**
    * Press Delete against a 500 trash POST, wait for that 500 and for
    * the key lock to release, press Delete again, and assert the second
    * trash POST happens.

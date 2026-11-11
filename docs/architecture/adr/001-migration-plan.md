@@ -668,7 +668,7 @@ Task management's principal lookup, member ids, and user name, notes' actor list
 
 ### M7.4 Review and remove test fixture routes (ADR §11)
 
-**Execution:** `M7.4`. [#297](https://github.com/jmhill/yoink/issues/297).
+**Execution:** `M7.4`. [#297](https://github.com/jmhill/yoink/issues/297). Done (#406, `3ca473c7`, Trunk 43034876654). #297 is closed.
 
 - **Depends on:** M5.10, M5.12
 - **Do:**
@@ -677,7 +677,7 @@ Task management's principal lookup, member ids, and user name, notes' actor list
   - Delete the fixture edge if every route is replaced. Otherwise document the remaining ones and the reason in the ADR.
 - **Accept:** the table-ownership exemption for `edges/test-fixtures/` is removed, or justified in writing.
 
-`M7.4` is In review. The five routes stay, and the `edges/test-fixtures/` exemption stays. The allowlist stays empty. `app.ts` and `composition-root.ts` do not change. Each route is registered only when `YOINK_TEST_FIXTURES=true`.
+`M7.4` is Done (#406, `3ca473c7`, Trunk 43034876654). #297 is closed. The five routes stay, and the `edges/test-fixtures/` exemption stays. The allowlist stays empty. `app.ts` and `composition-root.ts` do not change. Each route is registered only when `YOINK_TEST_FIXTURES=true`.
 
 `POST /test-api/review-fixture/backdate` sets `projects.created_at`, `projects.last_changed_at`, and `change_log.occurred_at` for one project so Review can seed a quiet row without sleeping. `POST /test-api/review-fixture/finish-task` sets `tasks.completed_at` and `completed_by` so a done-list week can be seeded. Create and complete stamp `clock.now()`. A process-wide fake clock would move every parallel e2e test. No authed command sets those timestamps.
 
@@ -864,7 +864,7 @@ The logical dependencies plus the serialization edges were checked together. The
 | `M7.1` | `OPENAPI-V1`, `M6.1`, `M6.3-process`, `M6.3-tasks-lists`, `M6.3-work`, `M6.3-project-page`, `M6.3-notes`, `M6.3-review`, `M6.3-history`, `M6.3-settings`, `M6.3-auth`, `M6.4` | — | Not started | Justin chooses the Sunset date, at least 90 days out, before headers advertise it. No outreach. OPENAPI-V1 is done ([#334](https://github.com/jmhill/yoink/pull/334), `30f08e333c45e7e7292955fa877c702fbef6374a`). | [#294](https://github.com/jmhill/yoink/issues/294) |
 | `M7.2` | `M7.1` | — | Gated | (a) ADR §9: the sunset date has passed, the alias has had no calls for 30 days, and any remaining token owner has been contacted. (b) Justin's explicit approval on #295. Green CI is not enough. | [#295](https://github.com/jmhill/yoink/issues/295) |
 | `M7.3` | `M7.2` | — | Not started | External gate: PLAN 7.7c is done, plus M7.2. Do not perform 7.7c here. | [#296](https://github.com/jmhill/yoink/issues/296) |
-| `M7.4` | `M5.10-review`, `M5.12` | — | In review. | The five `/test-api` routes stay. Each writes a state no authed command produces. A process-wide clock would race parallel e2e. The harness cannot seed the Docker volume through the unit of work. The `edges/test-fixtures/` exemption stays. The allowlist stays empty. `app.ts` and `composition-root.ts` do not change. | [#297](https://github.com/jmhill/yoink/issues/297) |
+| `M7.4` | `M5.10-review`, `M5.12` | — | Done (#406, `3ca473c7`, Trunk 43034876654). #297 is closed. | The five `/test-api` routes stay. Each writes a state no authed command produces. A process-wide clock would race parallel e2e. The harness cannot seed the Docker volume through the unit of work. The `edges/test-fixtures/` exemption stays. The allowlist stays empty. `app.ts` and `composition-root.ts` do not change. | [#297](https://github.com/jmhill/yoink/issues/297) |
 | `M7.5` | `M3.7`, `M4.4`, `M5.6`, `M5.8d`, `M5.9`, `M5.11-captures`, `M5.11-task-management`, `M5.11-notes`, `M5.11-review`, `M5.11-history`, `M5.11-access`, `M5.12b`, `M6.5-web`, `M6.5-admin` | — | Not started | None. M3.7 already removed the test-helper rows. | [#298](https://github.com/jmhill/yoink/issues/298) |
 | `M7.6` | `M7.2`, `M6.5-web`, `M6.5-admin` | — | Not started | None. | [#299](https://github.com/jmhill/yoink/issues/299) |
 | `M7.7` | `M7.5` | — | Not started | Tycho reviews the grouped log before the status change. | [#300](https://github.com/jmhill/yoink/issues/300) |

@@ -710,7 +710,7 @@ Status lives in that plan's execution index. These checkboxes do not repeat it.
 - [x] M5.10 Review and history (queries)
 - [ ] M5.11 Own types per module. M5.11-history is Done (#392, `ca942ac6`, Trunk 42981747783). #265 is closed. M5.11-notes is Done (#397, `70c9a28a`, Trunk 42995866984). #263 is closed. M5.11-review is Done (#398, `c4079000`, Trunk 43002280967). #264 is closed. Access remains.
 - [x] M5.12 Access: interface, unit of work, signup atomicity
-- [ ] M5.12b Replace interim access adapters with adapters over access's published queries. Depends on M5.3, M5.7, M5.10-review, and M5.12. Blocks M5.11-access and M7.5.
+- [ ] M5.12b Replace interim access adapters with adapters over access's published queries. In review. Depends on M5.3, M5.7, M5.10-review, and M5.12. Blocks M5.11-access and M7.5.
 - [x] M5.13 Access: migrate legacy services (closes 8.5.4)
 
 ### M6: Client edges - In progress

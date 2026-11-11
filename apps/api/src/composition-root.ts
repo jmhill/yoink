@@ -18,7 +18,7 @@ import { NOTE_TIMELINE_BUILDERS } from './modules/history/domain/note-timeline.j
 import { TASK_TIMELINE_BUILDERS } from './modules/history/domain/task-timeline.js';
 import { createFakeHistoryParticipant } from './modules/history/infrastructure/fake-event-sink.js';
 import { historySqlParticipant } from './modules/history/infrastructure/sqlite-event-sink.js';
-import { createAccess } from './access/index.js';
+import { createAccess, type Access, type AccessStorageError } from './access/index.js';
 import { createAdminSessionParticipant } from './access/infrastructure/admin-session-participant.js';
 import { createNodeAdminSessionCrypto } from './access/infrastructure/node-admin-session-crypto.js';
 import { createSimpleWebAuthnVerifier } from './access/infrastructure/simplewebauthn-verifier.js';
@@ -554,11 +554,21 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
   const listStore = await createSqliteListStore(database);
   const taskStore = await createSqliteTaskStore(database);
   const projectStore = await createSqliteProjectStore(database);
+  // The ports below close over this. createAccess assigns it before any request.
+  let publishedAccess: Access['queries'] | undefined;
+  const accessQueries = (): Access['queries'] => {
+    if (publishedAccess === undefined) {
+      throw new Error('Access queries are not ready');
+    }
+    return publishedAccess;
+  };
   const principalLookup = {
     existsInOrganization: (principalId: string, organizationId: string) =>
-      membershipService
-        .getMembership({ userId: principalId, organizationId })
-        .map((membership) => membership !== null)
+      accessQueries()
+        .principalExistsInOrganization({
+          userId: principalId,
+          organizationId,
+        })
         .orElse(() => okAsync(false)),
   };
   const importStore = createSqliteImportStore(database);
@@ -593,18 +603,14 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
         .findByIds(ids)
         .map((lists) => lists.map((list) => ({ id: list.id, organizationId: list.organizationId }))),
     loadMemberIds: (organizationId) =>
-      membershipService
-        .listMemberships({ organizationId })
-        .map((memberships) => new Set(memberships.map((membership) => membership.userId)))
-        .mapErr((error) =>
-          storageError(
-            'message' in error && typeof error.message === 'string' ? error.message : error.type
-          )
-        ),
+      accessQueries()
+        .memberIds(organizationId)
+        .map((ids) => new Set(ids))
+        .mapErr((error) => storageError(error.message)),
     loadUserName: (userId) =>
-      userStore
-        .findById(userId)
-        .map((user) => user?.name ?? user?.email ?? 'Unknown')
+      accessQueries()
+        .userDisplayNames([userId])
+        .map((names) => names.find((name) => name.id === userId)?.displayName ?? 'Unknown')
         .mapErr((error) => storageError(error.message)),
     listProjects: (organizationId) => projectStore.findByOrganization(organizationId),
     pageProjects: (options) => projectStore.pageByOrganization(options),
@@ -637,13 +643,13 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
           )
           .mapErr((error) => noteStorageError(error.message, error.cause)),
       loadNoteActors: (userIds) =>
-        userStore
-          .findByIds([...userIds])
-          .map((users) =>
-            users.map((user) => ({
-              id: user.id,
-              name: user.name ?? null,
-              email: user.email,
+        accessQueries()
+          .userDisplayNames(userIds)
+          .map((names) =>
+            names.map((name) => ({
+              id: name.id,
+              name: name.displayName,
+              email: null,
             }))
           )
           .mapErr(noteStorageFromUser),
@@ -658,21 +664,16 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
         )
         .mapErr((error) => noteStorageError(error.message, error.cause)),
     loadActorName: (userId) =>
-      userStore
-        .findById(userId)
-        .map((user) => user?.name ?? user?.email ?? 'Unknown')
+      accessQueries()
+        .userDisplayNames([userId])
+        .map((names) => names.find((name) => name.id === userId)?.displayName ?? 'Unknown')
         .mapErr(noteStorageFromUser),
     loadOrgPerson: (organizationId) =>
-      loadOrgPersonFromSqlite(database)(organizationId).mapErr((error) =>
-        noteStorageError(error.message, error.cause)
-      ),
+      accessQueries().firstHuman(organizationId).mapErr(noteStorageFromUser),
     loadNotesMirrorBot: loadNotesMirrorBotFromSqlite(
       database,
       config.notesMirrorBotUserId ?? null,
-      (input) =>
-        loadNamedAgentFromSqlite(database)(input).mapErr((error) =>
-          noteStorageError(error.message, error.cause)
-        )
+      (input) => accessQueries().namedAgent(input).mapErr(noteStorageFromUser)
     ),
     uow: unitOfWork,
     nextId: () => idGenerator.generate(),
@@ -695,9 +696,9 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
         storageError(error.message, error.cause)
       ),
     loadActorNames: (ids) =>
-      loadActorNamesFromSqlite(database)(ids).mapErr((error) =>
-        storageError(error.message, error.cause)
-      ),
+      accessQueries()
+        .actorNames(ids)
+        .mapErr((error) => storageError(error.message)),
   });
   const historyHandlers = createHistoryHandlers({
     loadProject: (id) =>
@@ -719,7 +720,6 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
 
   const reviewError = (error: { message: string }) => reviewStorageError(error.message, error);
   const projectChanges = createSqliteProjectChanges(database);
-  const organizationTimeZone = createSqliteOrganizationTimeZone(database);
   const reviewStore = createReviewFromFacts({
     listProjects: (organizationId) =>
       projectStore.findByOrganization(organizationId).mapErr(reviewError),
@@ -730,7 +730,8 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
       taskStore.countFinishedWithoutProject(options).mapErr(reviewError),
     latestProjectChanges: (organizationId) =>
       projectChanges(organizationId).mapErr(reviewError),
-    loadTimeZone: (organizationId) => organizationTimeZone(organizationId).mapErr(reviewError),
+    loadTimeZone: (organizationId) =>
+      accessQueries().organizationTimeZone(organizationId).mapErr(reviewError),
   });
   const reviewHandlers = createReviewHandlers({
     pageReview: (options) => reviewStore.pageReview(options),
@@ -826,6 +827,10 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
       verifySignupCredential: null,
       sessionTtlMs: 7 * 24 * 60 * 60 * 1000,
     });
+  const accessStorage = (message: string): AccessStorageError => ({
+    type: 'ACCESS_STORAGE',
+    message,
+  });
   const access = createAccess({
     tokenService,
     sessionService: signupDraft?.sessionService ?? null,
@@ -834,11 +839,20 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
     invitationStore,
     organizationStore,
     loadOrganizationTimeZone: createSqliteOrganizationTimeZone(database),
+    loadFirstHuman: (organizationId) =>
+      loadOrgPersonFromSqlite(database)(organizationId).mapErr((error) =>
+        accessStorage(error.message)
+      ),
+    loadNamedAgent: (input) =>
+      loadNamedAgentFromSqlite(database)(input).mapErr((error) => accessStorage(error.message)),
+    loadActorNames: (ids) =>
+      loadActorNamesFromSqlite(database)(ids).mapErr((error) => accessStorage(error.message)),
     clock,
     idGenerator,
     unitOfWork,
     signupService,
   });
+  publishedAccess = access.queries;
   const signupConfig: SignupConfig | undefined =
     signupDraft && agentService
       ? {

@@ -2,20 +2,25 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createClient, type Client } from '@libsql/client';
-import { describe, expect, it } from 'vitest';
-import { errAsync, okAsync } from 'neverthrow';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { err, errAsync, ok, okAsync, ResultAsync, type Result } from 'neverthrow';
 import type { IntegrationEvent } from '../../kernel/integration-event.js';
 import type { ModuleName } from '../../kernel/module-name.js';
 import type {
   GuardedStatement,
   Policy,
+  PolicyRefusal,
   SqlParticipant,
   Work,
   WriteVerb,
 } from '../../kernel/unit-of-work.js';
+import { openDatabase } from '../database/database.js';
 import {
   createSqliteUnitOfWork,
   libsqlWriteClient,
+  UNIT_OF_WORK_SLOW_TRANSACTION_MS,
+  UNIT_OF_WORK_TRANSACTION_TIMEOUT_MS,
+  type UnitOfWorkLogger,
   type WriteClient,
   type WriteTransaction,
 } from './sqlite-unit-of-work.js';
@@ -583,6 +588,357 @@ describe('createSqliteUnitOfWork protocol', () => {
     expect(calls.sql).toEqual([OK, POLICY]);
     expect(calls.commit).toBe(1);
   });
+
+  it('does not open a transaction while a policy is still running', async () => {
+    let releasePolicy: () => void = () => undefined;
+    const policyGate = new Promise<void>((resolve) => {
+      releasePolicy = resolve;
+    });
+    const policies: readonly Policy[] = [
+      {
+        on: 'TaskDeleted',
+        react: () => new ResultAsync(policyGate.then(() => ok(null))),
+      },
+    ];
+    const { client, calls } = scripted();
+    const pending = createSqliteUnitOfWork({ client, participants, policies }).commit([
+      work('captures', statement(OK), ['TaskDeleted']),
+    ]);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(calls.modes).toEqual([]);
+    releasePolicy();
+    const result = await pending;
+    expect(result.isOk()).toBe(true);
+    expect(calls.modes).toEqual(['write']);
+  });
+
+  it('does not open a transaction when a policy rejects', async () => {
+    const policies: readonly Policy[] = [
+      {
+        on: 'TaskDeleted',
+        react: () => new ResultAsync(Promise.reject(new Error('policy blew up'))),
+      },
+    ];
+    const { client, calls } = scripted();
+
+    await expect(
+      createSqliteUnitOfWork({ client, participants, policies }).commit([
+        work('captures', statement(OK), ['TaskDeleted']),
+      ])
+    ).rejects.toThrow('policy blew up');
+    expect(calls.modes).toEqual([]);
+  });
+});
+
+describe('unit of work transaction deadline', () => {
+  const participants = [passthrough('captures'), passthrough('task-management')];
+
+  afterEach(() => {
+    vi.clearAllTimers();
+    vi.useRealTimers();
+  });
+
+  it('uses a five second deadline and a one second slow warning', () => {
+    expect(UNIT_OF_WORK_TRANSACTION_TIMEOUT_MS).toBe(5_000);
+    expect(UNIT_OF_WORK_SLOW_TRANSACTION_MS).toBe(1_000);
+  });
+
+  it('rolls back and does not commit when the batch outlives the deadline', async () => {
+    vi.useFakeTimers();
+    let releaseBatch: (rows: readonly { rowsAffected: number }[]) => void = () => undefined;
+    const calls = { commit: 0, rollback: 0, close: 0 };
+    const logs: BatchLog[] = [];
+    const client: WriteClient = {
+      transaction: () => {
+        const tx: WriteTransaction = {
+          batch: () =>
+            new Promise((resolve) => {
+              releaseBatch = resolve;
+            }),
+          commit: () => {
+            calls.commit += 1;
+            return Promise.resolve();
+          },
+          rollback: () => {
+            calls.rollback += 1;
+            return Promise.resolve();
+          },
+          close: () => {
+            calls.close += 1;
+          },
+        };
+        return Promise.resolve(tx);
+      },
+    };
+    const resultPromise = createSqliteUnitOfWork({
+      client,
+      participants,
+      transactionTimeoutMs: 20,
+      slowTransactionMs: 1_000,
+      clock: { now: () => 0 },
+      logger: { error: (fields) => logs.push(fields) },
+    }).commit([
+      work('captures', statement(OK, [LEAKED_SECRET])),
+      work('task-management', statement(AFTER, [LEAKED_SECRET])),
+    ]);
+
+    await vi.advanceTimersByTimeAsync(20);
+    const result = await resultPromise;
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toEqual({
+        kind: 'Storage',
+        owners: ['captures', 'task-management'],
+        reason: 'transaction-timeout',
+      });
+      expect(keysOf(result.error)).toEqual(['kind', 'owners', 'reason']);
+    }
+    expect(calls.commit).toBe(0);
+    expect(calls.rollback).toBe(1);
+    expect(calls.close).toBe(1);
+    expect(logs).toEqual([
+      {
+        msg: 'unit_of_work_batch_failed',
+        reason: 'transaction-timeout',
+        owners: ['captures', 'task-management'],
+        batchSize: 2,
+        cause: 'Error',
+      },
+    ]);
+    expect(JSON.stringify(logs)).not.toContain(LEAKED_SECRET);
+    expect(JSON.stringify(logs)).not.toContain(OK);
+
+    releaseBatch([{ rowsAffected: 1 }, { rowsAffected: 1 }]);
+    await Promise.resolve();
+    expect(calls.commit).toBe(0);
+  });
+
+  it('names the only owner when that batch times out', async () => {
+    vi.useFakeTimers();
+    const calls = { commit: 0, rollback: 0, close: 0 };
+    const client: WriteClient = {
+      transaction: () =>
+        Promise.resolve({
+          batch: () => new Promise(() => undefined),
+          commit: () => {
+            calls.commit += 1;
+            return Promise.resolve();
+          },
+          rollback: () => {
+            calls.rollback += 1;
+            return Promise.resolve();
+          },
+          close: () => {
+            calls.close += 1;
+          },
+        }),
+    };
+
+    const resultPromise = createSqliteUnitOfWork({
+      client,
+      participants: [passthrough('captures')],
+      transactionTimeoutMs: 20,
+      clock: { now: () => 0 },
+    }).commit([work('captures', statement(OK)), work('captures', statement(AFTER))]);
+    await vi.advanceTimersByTimeAsync(20);
+    const result = await resultPromise;
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toEqual({
+        kind: 'Storage',
+        owner: 'captures',
+        owners: ['captures'],
+        reason: 'transaction-timeout',
+      });
+    }
+    expect(calls.commit).toBe(0);
+    expect(calls.rollback).toBe(1);
+    expect(calls.close).toBe(1);
+  });
+
+  it('warns with owners, statement count, and duration, and leaves parameters out', async () => {
+    let now = 0;
+    const warns: Parameters<NonNullable<UnitOfWorkLogger['warn']>>[0][] = [];
+    const { client } = scripted();
+    const clock = {
+      now: () => now,
+    };
+    const loggingClient: WriteClient = {
+      transaction: async (mode) => {
+        const tx = await client.transaction(mode);
+        return {
+          ...tx,
+          batch: async (statements) => {
+            now = 1_500;
+            return tx.batch(statements);
+          },
+        };
+      },
+    };
+
+    const result = await createSqliteUnitOfWork({
+      client: loggingClient,
+      participants: [passthrough('captures')],
+      clock,
+      slowTransactionMs: 1_000,
+      transactionTimeoutMs: 60_000,
+      logger: { error: () => undefined, warn: (fields) => warns.push(fields) },
+    }).commit([
+      work('captures', statement(OK, [LEAKED_SECRET])),
+      work('captures', statement(AFTER, [LEAKED_SECRET])),
+    ]);
+
+    expect(result.isOk()).toBe(true);
+    expect(warns).toEqual([
+      {
+        msg: 'unit_of_work_transaction_slow',
+        owners: ['captures'],
+        statementCount: 2,
+        durationMs: 1_500,
+      },
+    ]);
+    expect(JSON.stringify(warns)).not.toContain(LEAKED_SECRET);
+    expect(JSON.stringify(warns)).not.toContain('INSERT');
+  });
+
+  it('does not warn when the transaction finishes under the threshold', async () => {
+    const warns: string[] = [];
+    const { client } = scripted();
+    const result = await createSqliteUnitOfWork({
+      client,
+      participants,
+      clock: { now: () => 0 },
+      slowTransactionMs: 1_000,
+      logger: { error: () => undefined, warn: () => warns.push('slow') },
+    }).commit([work('captures', statement(OK))]);
+
+    expect(result.isOk()).toBe(true);
+    expect(warns).toEqual([]);
+  });
+});
+
+describe('unit of work write lock', () => {
+  it('lets a policy commit finish before the outer transaction opens', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'yoink-uow-lock-'));
+    const opened = openDatabase({ type: 'file', path: join(root, 'lock.db') });
+    try {
+      await opened.database.execute({
+        sql: 'CREATE TABLE kept (id TEXT PRIMARY KEY)',
+      });
+      const participants = [passthrough('captures')];
+      let uow: ReturnType<typeof createSqliteUnitOfWork> | undefined;
+      const policies: readonly Policy[] = [
+        {
+          on: 'TaskDeleted',
+          react: () =>
+            new ResultAsync(
+              (async (): Promise<Result<Work<unknown> | null, PolicyRefusal>> => {
+                const nested = uow?.commit([
+                  work('captures', statement('INSERT INTO kept (id) VALUES (?)', ['inner'])),
+                ]);
+                if (nested === undefined) {
+                  return err({ kind: 'Refused', reason: 'missing-uow' });
+                }
+                const result = await nested;
+                if (result.isErr()) {
+                  return err({ kind: 'Refused', reason: 'nested-commit' });
+                }
+                return ok(null);
+              })()
+            ),
+        },
+      ];
+      uow = createSqliteUnitOfWork({
+        client: opened.writeClient,
+        participants,
+        policies,
+        transactionTimeoutMs: 500,
+      });
+
+      const result = await uow.commit([
+        work('captures', statement('INSERT INTO kept (id) VALUES (?)', ['outer']), ['TaskDeleted']),
+      ]);
+
+      expect(result.isOk()).toBe(true);
+      const rows = await opened.database.execute({
+        sql: 'SELECT id FROM kept ORDER BY id',
+      });
+      expect(rows.rows.map((row) => row.id)).toEqual(['inner', 'outer']);
+    } finally {
+      await opened.database.close();
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('rolls a stalled file transaction back and lets the next write commit', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'yoink-uow-stall-'));
+    const opened = openDatabase({ type: 'file', path: join(root, 'stall.db') });
+    let releaseStall: () => void = () => undefined;
+    const stall = new Promise<void>((resolve) => {
+      releaseStall = resolve;
+    });
+    let stalled = true;
+    try {
+      await opened.database.execute({
+        sql: 'CREATE TABLE notes (id INTEGER PRIMARY KEY, body TEXT)',
+      });
+      const client: WriteClient = {
+        transaction: async (mode) => {
+          const tx = await opened.writeClient.transaction(mode);
+          return {
+            batch: async (statements) => {
+              if (stalled) {
+                stalled = false;
+                await stall;
+              }
+              return tx.batch(statements);
+            },
+            commit: () => tx.commit(),
+            rollback: () => tx.rollback(),
+            close: () => tx.close(),
+          };
+        },
+      };
+      const uow = createSqliteUnitOfWork({
+        client,
+        participants: [passthrough('captures')],
+        transactionTimeoutMs: 50,
+        slowTransactionMs: 60_000,
+      });
+      const timedOut = await uow.commit([
+        work('captures', statement('INSERT INTO notes (body) VALUES (?)', ['stalled'])),
+      ]);
+
+      expect(timedOut.isErr()).toBe(true);
+      if (timedOut.isErr()) {
+        expect(timedOut.error).toEqual({
+          kind: 'Storage',
+          owner: 'captures',
+          owners: ['captures'],
+          reason: 'transaction-timeout',
+        });
+      }
+
+      releaseStall();
+      await Promise.resolve();
+      const next = await uow.commit([
+        work('captures', statement('INSERT INTO notes (body) VALUES (?)', ['next'])),
+      ]);
+      expect(next.isOk()).toBe(true);
+      const rows = await opened.database.execute({
+        sql: 'SELECT body FROM notes ORDER BY id',
+      });
+      expect(rows.rows.map((row) => row.body)).toEqual(['next']);
+    } finally {
+      releaseStall();
+      await opened.database.close();
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('libsql write transaction', () => {
@@ -823,7 +1179,7 @@ const record = (
       },
       close: () => {
         calls.close += 1;
-        tx.close();
+        return tx.close();
       },
     };
   },

@@ -31,7 +31,25 @@ export type WriteTransaction = {
   ) => Promise<readonly { readonly rowsAffected: number }[]>;
   commit: () => Promise<void>;
   rollback: () => Promise<void>;
-  close: () => void;
+  /** Rolls back when the transaction is still open. Resolves after the gate is released. */
+  close: () => void | Promise<void>;
+};
+
+/**
+ * A stuck write should fail and release before the caller gives up.
+ * Same budget as one request-path Turso call.
+ */
+export const UNIT_OF_WORK_TRANSACTION_TIMEOUT_MS = 5_000;
+
+/** A local batch is milliseconds. Past this, the write lock has stayed out. */
+export const UNIT_OF_WORK_SLOW_TRANSACTION_MS = 1_000;
+
+export type UnitOfWorkClock = {
+  now: () => number;
+};
+
+const systemClock: UnitOfWorkClock = {
+  now: () => Date.now(),
 };
 
 /** Failure log. The raw driver message is not a field. */
@@ -42,6 +60,12 @@ export type UnitOfWorkLogger = {
     readonly owners: readonly ModuleName[];
     readonly batchSize: number;
     readonly cause: string;
+  }) => void;
+  warn?: (fields: {
+    readonly msg: 'unit_of_work_transaction_slow';
+    readonly owners: readonly ModuleName[];
+    readonly statementCount: number;
+    readonly durationMs: number;
   }) => void;
 };
 
@@ -58,6 +82,8 @@ type Planned = {
  * U1. One `tx.batch` inside `client.transaction('write')`.
  * `rowsAffected === 0` on a guarded write is Conflict for that statement.
  * A thrown batch or commit is Storage. The batch is not replayed.
+ * A transaction that passes the deadline rolls back, releases, and is Storage.
+ * That batch is not run again.
  */
 export const createSqliteUnitOfWork = (deps: {
   readonly client: WriteClient;
@@ -65,6 +91,9 @@ export const createSqliteUnitOfWork = (deps: {
   readonly policies?: readonly Policy[];
   readonly sink?: EventSink;
   readonly logger?: UnitOfWorkLogger;
+  readonly clock?: UnitOfWorkClock;
+  readonly transactionTimeoutMs?: number;
+  readonly slowTransactionMs?: number;
 }): UnitOfWork => {
   const byOwner = indexParticipants(deps.participants);
   const owners = new Set(byOwner.keys());
@@ -80,6 +109,9 @@ export const createSqliteUnitOfWork = (deps: {
           policies,
           sink: deps.sink,
           logger: deps.logger,
+          clock: deps.clock ?? systemClock,
+          transactionTimeoutMs: deps.transactionTimeoutMs ?? UNIT_OF_WORK_TRANSACTION_TIMEOUT_MS,
+          slowTransactionMs: deps.slowTransactionMs ?? UNIT_OF_WORK_SLOW_TRANSACTION_MS,
           works,
         })
       ),
@@ -104,6 +136,7 @@ export const libsqlWriteClient = (client: Client): WriteClient => ({
       rollback: () => tx.rollback(),
       close: () => {
         tx.close();
+        return Promise.resolve();
       },
     };
   },
@@ -116,6 +149,9 @@ const commitSqlite = async (input: {
   readonly policies: readonly Policy[];
   readonly sink?: EventSink;
   readonly logger?: UnitOfWorkLogger;
+  readonly clock: UnitOfWorkClock;
+  readonly transactionTimeoutMs: number;
+  readonly slowTransactionMs: number;
   readonly works: readonly Work<unknown>[];
 }): Promise<Result<void, CommitFailure>> => {
   const prepared = await prepareCommit({
@@ -155,58 +191,143 @@ const commitSqlite = async (input: {
   }
 
   const modules = modulesOf(planned);
-  let tx: WriteTransaction;
-  try {
-    tx = await input.client.transaction('write');
-  } catch (caught) {
-    return err(failedBatch(input.logger, modules, planned.length, 'transaction-failed', caught));
+  const started = input.clock.now();
+  const result = await runTimedBatch({
+    client: input.client,
+    logger: input.logger,
+    modules,
+    planned,
+    transactionTimeoutMs: input.transactionTimeoutMs,
+  });
+  const durationMs = input.clock.now() - started;
+  if (durationMs >= input.slowTransactionMs) {
+    input.logger?.warn?.({
+      msg: 'unit_of_work_transaction_slow',
+      owners: storageFailure(modules, 'slow').owners,
+      statementCount: planned.length,
+      durationMs,
+    });
   }
-
-  let results: readonly { readonly rowsAffected: number }[];
-  try {
-    results = await tx.batch(
-      planned.map((step) => ({
-        sql: step.statement.sql,
-        args: step.statement.args,
-      }))
-    );
-  } catch (caught) {
-    await abandon(tx);
-    return err(failedBatch(input.logger, modules, planned.length, 'execute-failed', caught));
-  }
-
-  if (results.length !== planned.length) {
-    await abandon(tx);
-    return err(failedBatch(input.logger, modules, planned.length, 'execute-failed', undefined));
-  }
-
-  for (let index = 0; index < planned.length; index += 1) {
-    const step = planned[index];
-    const rowsAffected = results[index]?.rowsAffected;
-    if (step !== undefined && step.statement.guard && rowsAffected === 0) {
-      await abandon(tx);
-      return err({
-        kind: 'Conflict',
-        owner: step.owner,
-        reason: guardReason(step.statement.sql),
-      });
-    }
-  }
-
-  try {
-    await tx.commit();
-  } catch (caught) {
-    await abandon(tx);
-    return err(failedBatch(input.logger, modules, planned.length, 'commit-failed', caught));
-  }
-
-  try {
-    tx.close();
-  } catch {
-    return ok(undefined);
-  }
-  return ok(undefined);
+  return result;
 };
+
+/**
+ * One attempt. The deadline abandons a batch that is still open.
+ * Commit is not raced with rollback: the file connection cannot run both.
+ * A batch still in flight at the deadline is rolled back and not committed.
+ */
+const runTimedBatch = (input: {
+  readonly client: WriteClient;
+  readonly logger?: UnitOfWorkLogger;
+  readonly modules: readonly ModuleName[];
+  readonly planned: readonly Planned[];
+  readonly transactionTimeoutMs: number;
+}): Promise<Result<void, CommitFailure>> =>
+  new Promise((resolve) => {
+    let phase: 'opening' | 'batching' | 'committing' | 'settled' = 'opening';
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let tx: WriteTransaction | undefined;
+
+    const clearTimer = (): void => {
+      if (timer !== undefined) clearTimeout(timer);
+    };
+
+    const failure = (reason: string, caught: unknown): StorageFailure =>
+      failedBatch(input.logger, input.modules, input.planned.length, reason, caught);
+
+    void (async () => {
+      try {
+        tx = await input.client.transaction('write');
+      } catch (caught) {
+        phase = 'settled';
+        resolve(err(failure('transaction-failed', caught)));
+        return;
+      }
+
+      phase = 'batching';
+      const opened = tx;
+      timer = setTimeout(() => {
+        if (phase !== 'batching') return;
+        phase = 'settled';
+        clearTimer();
+        void abandon(opened).then(() => {
+          resolve(err(failure('transaction-timeout', undefined)));
+        });
+      }, input.transactionTimeoutMs);
+
+      const stop = async (value: Result<void, CommitFailure>): Promise<void> => {
+        if (phase !== 'batching') return;
+        phase = 'settled';
+        clearTimer();
+        await abandon(opened);
+        resolve(value);
+      };
+
+      let results: readonly { readonly rowsAffected: number }[];
+      try {
+        results = await opened.batch(
+          input.planned.map((step) => ({
+            sql: step.statement.sql,
+            args: step.statement.args,
+          }))
+        );
+      } catch (caught) {
+        await stop(err(failure('execute-failed', caught)));
+        return;
+      }
+
+      if (results.length !== input.planned.length) {
+        await stop(err(failure('execute-failed', undefined)));
+        return;
+      }
+
+      for (let index = 0; index < input.planned.length; index += 1) {
+        const step = input.planned[index];
+        const rowsAffected = results[index]?.rowsAffected;
+        if (step !== undefined && step.statement.guard && rowsAffected === 0) {
+          await stop(
+            err({
+              kind: 'Conflict',
+              owner: step.owner,
+              reason: guardReason(step.statement.sql),
+            })
+          );
+          return;
+        }
+      }
+
+      if (phase !== 'batching') return;
+      phase = 'committing';
+      clearTimer();
+      try {
+        await opened.commit();
+      } catch (caught) {
+        await abandon(opened);
+        if (phase !== 'committing') return;
+        phase = 'settled';
+        resolve(err(failure('commit-failed', caught)));
+        return;
+      }
+
+      try {
+        await opened.close();
+      } catch {
+        if (phase !== 'committing') return;
+        phase = 'settled';
+        resolve(ok(undefined));
+        return;
+      }
+      if (phase !== 'committing') return;
+      phase = 'settled';
+      resolve(ok(undefined));
+    })().catch(async (caught: unknown) => {
+      if (phase === 'settled') return;
+      phase = 'settled';
+      clearTimer();
+      if (tx !== undefined) await abandon(tx);
+      resolve(err(failure('execute-failed', caught)));
+    });
+  });
 
 const GUARD_REASON = /--\s*guard:([a-z0-9-]+)/;
 
@@ -256,7 +377,7 @@ const abandon = async (tx: WriteTransaction): Promise<void> => {
     // The step result is already decided.
   } finally {
     try {
-      tx.close();
+      await tx.close();
     } catch {
       // The step result is already decided.
     }

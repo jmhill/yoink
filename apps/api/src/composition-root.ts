@@ -317,7 +317,10 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
       ...NOTE_TIMELINE_BUILDERS,
     },
   });
-  const batchLog: { error?: UnitOfWorkLogger['error'] } = {};
+  const batchLog: {
+    error?: UnitOfWorkLogger['error'];
+    warn?: UnitOfWorkLogger['warn'];
+  } = {};
   // Filled after captures exists. Both factories keep this array, and commit
   // reads it then. The policy needs captures; captures needs the unit of work.
   const processingPolicies: Policy[] = [];
@@ -335,6 +338,9 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
     logger: {
       error: (fields) => {
         batchLog.error?.(fields);
+      },
+      warn: (fields) => {
+        batchLog.warn?.(fields);
       },
     },
   });
@@ -880,6 +886,9 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
   });
   batchLog.error = (fields) => {
     server.log.error(fields);
+  };
+  batchLog.warn = (fields) => {
+    server.log.warn(fields);
   };
   return Object.assign(server, { unitOfWork, inMemoryUnitOfWork });
 };

@@ -546,7 +546,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 Task management's principal lookup, member ids, and user name, notes' actor list, actor name, first human, and mirror-bot lookup, review's time zone, and history's actor names call `access.queries`. `memberIds` and `userDisplayNames` read the access stores. A missing display name is the email, and a missing user is omitted so the caller can say Unknown. `actorNames`, `firstHuman`, and `namedAgent` stay the existing access SQL: a blank actor name stays blank, and the person and agent lookups keep their order. Notes still reads `notes_settings`. The composition root assigns the queries after `createAccess`, and those ports close over that assignment. `app.ts` does not change.
 
 - **Depends on:** M5.3, M5.7, M5.10-review, M5.12
-- **Blocks:** M5.11-access ([#266](https://github.com/jmhill/yoink/issues/266)), M7.5
+- **Blocks:** M5.11-access ([#266](https://github.com/jmhill/yoink/issues/266)), M7.5a
 - **Do:** find every interim access adapter from M5.3, M5.7, and M5.10, and any other adapter of the same kind. Replace each with an adapter over access's published queries. No cross-module SQL. Remove allowlist and lint exemptions that exist only for those adapters. Keep the tests.
 - **Accept:** merged, and that merge commit's Trunk run (deploy and post-deploy smoke) passes.
 
@@ -677,7 +677,7 @@ Task management's principal lookup, member ids, and user name, notes' actor list
   - Delete the fixture edge if every route is replaced. Otherwise document the remaining ones and the reason in the ADR.
 - **Accept:** the table-ownership exemption for `edges/test-fixtures/` is removed, or justified in writing.
 
-`M7.4` is Done (#406, `3ca473c7`, Trunk 43034876654). #297 is closed. The five routes stay, and the `edges/test-fixtures/` exemption stays. The allowlist stays empty until M7.5 removes the file. `app.ts` and `composition-root.ts` do not change. Each route is registered only when `YOINK_TEST_FIXTURES=true`. The process refuses to start, before it listens, when that flag is true and `FLY_APP_NAME` is `jhtc-yoink-api`, or when `TURSO_DATABASE_URL` names the `yoink-prod` database. That refusal is Done (#410, `39ed8c77`, Trunk 43061150447). `NODE_ENV` is not that signal: the e2e image sets `NODE_ENV=production` and `YOINK_TEST_FIXTURES=true` with a local file database.
+`M7.4` is Done (#406, `3ca473c7`, Trunk 43034876654). #297 is closed. The five routes stay, and the `edges/test-fixtures/` exemption stays. The allowlist stays empty until M7.5a removes the file. `app.ts` and `composition-root.ts` do not change. Each route is registered only when `YOINK_TEST_FIXTURES=true`. The process refuses to start, before it listens, when that flag is true and `FLY_APP_NAME` is `jhtc-yoink-api`, or when `TURSO_DATABASE_URL` names the `yoink-prod` database. That refusal is Done (#410, `39ed8c77`, Trunk 43061150447). `NODE_ENV` is not that signal: the e2e image sets `NODE_ENV=production` and `YOINK_TEST_FIXTURES=true` with a local file database.
 
 `POST /test-api/review-fixture/backdate` sets `projects.created_at`, `projects.last_changed_at`, and `change_log.occurred_at` for one project so Review can seed a quiet row without sleeping. `POST /test-api/review-fixture/finish-task` sets `tasks.completed_at` and `completed_by` so a done-list week can be seeded. Create and complete stamp `clock.now()`. A process-wide fake clock would move every parallel e2e test. No authed command sets those timestamps.
 
@@ -685,17 +685,31 @@ Task management's principal lookup, member ids, and user name, notes' actor list
 
 The e2e database is a Docker volume. The harness cannot seed it through the unit of work. Replacing any of these routes needs a new product command or a shared clock. Neither is in this task.
 
-### M7.5 All enforcement at `error` (absorbs 8.5.5) - In review
+### M7.5 All enforcement at `error` (absorbs 8.5.5)
 
-**Execution:** `M7.5`. [#298](https://github.com/jmhill/yoink/issues/298). In review.
+M7.5 stays open while `edges/legacy/` exists. [#298](https://github.com/jmhill/yoink/issues/298) stays open until M7.5b is Done. This work delivers M7.5a and does not close #298.
 
-- **Depends on:** M3.7, all of M5, M6.5
+#### M7.5a Enforce now - In review
+
+**Execution:** `M7.5a`. [#298](https://github.com/jmhill/yoink/issues/298). In review. This part does not close #298.
+
+- **Depends on:** M3.7, M4.4, M5.6, M5.9, M5.11-captures, M5.11-task-management, M5.11-notes, M5.11-review, M5.11-history, M5.11-access, M5.12b
 - **Do:**
   - Every ADR §10 rule goes to `error`.
   - The table-ownership allowlist is empty, then removed.
   - Confirm `pnpm lint` runs in CI.
   - Update `ESLINT_BASELINE.md` to "zero, enforced".
 - **Accept:** `pnpm quality` passes with no boundaries warnings.
+
+M7.5a is In review. ADR §10 rules are `error`. The allowlist file is gone. Boundaries warnings are 0. Web stays 32. `app.ts` and `composition-root.ts` do not change.
+
+#### M7.5b Confirm after legacy removal - Not started
+
+**Execution:** `M7.5b`. [#298](https://github.com/jmhill/yoink/issues/298). Not started.
+
+- **Depends on:** M7.5a, M6.5-web ([#291](https://github.com/jmhill/yoink/issues/291)), M6.5-admin ([#292](https://github.com/jmhill/yoink/issues/292)), M5.8d ([#257](https://github.com/jmhill/yoink/issues/257))
+- **Do:** Confirm every ADR §10 rule is still `error` after those three tasks have landed and `edges/legacy/` no longer exists.
+- **Accept:** M6.5-web, M6.5-admin, and M5.8d have landed. Every ADR §10 rule is still `error`. `edges/legacy/` does not exist. M7.5 is not Done before that.
 
 ### M7.6 Remove legacy contracts and leftovers
 
@@ -712,7 +726,7 @@ The e2e database is a Docker volume. The harness cannot seed it through the unit
 
 **Execution:** `M7.7`. [#300](https://github.com/jmhill/yoink/issues/300).
 
-- **Depends on:** M7.5
+- **Depends on:** M7.5b
 - **Do:** group ADR-002 §5's entries by theme. Check them against ADR-002 §6's conditions for starting. Either draft ADR-002 in full, or close it as **Rejected (not needed)** with the reasoning.
 - **Accept:** ADR-002's status is updated.
 
@@ -733,7 +747,7 @@ M0.1  M0.2  M0.3  M0.4  M0.5
          M0.2+M2.* ── M4.1 ── M4.2 ── M4.3
                         │
                       M4.1b ── M5.1, M5.3, M5.5
-         M1.2 ── M3.7 ── M7.5
+         M1.2 ── M3.7 ── M7.5a
          M3.2 ── OPENAPI-V1 ── M7.1
                                          │
        M5.1 (captures) ── M5.2 ── M5.3 ──┬── M5.4
@@ -745,10 +759,11 @@ M0.1  M0.2  M0.3  M0.4  M0.5
                 └── M6.1 (extension)
    M3.5 ── M6.2 ── M6.3 (screens, as modules land)    M5.12 ── M6.4 (admin)
                        M6.5 ── M6.6
-   M7.1 ── M7.2 ── M7.3 (after PLAN 7.7c)      M7.4      M7.5 ── M7.6, M7.7
+   M7.1 ── M7.2 ── M7.3 (after PLAN 7.7c)      M7.4      M7.5a ── M7.5b ── M7.7
+                └── M7.6
 ```
 
-M4.4 runs after every M5 task that removes callers of history's cross-module guards. `M5.12b` follows `M5.3`, `M5.7`, `M5.10-review`, and `M5.12`, and blocks `M5.11-access` and `M7.5`.
+M4.4 runs after every M5 task that removes callers of history's cross-module guards. `M5.12b` follows `M5.3`, `M5.7`, `M5.10-review`, and `M5.12`, and blocks `M5.11-access` and `M7.5a`.
 
 ## Execution mandate
 
@@ -778,7 +793,7 @@ M0.2 has no GitHub issue. The technical spike is complete. The obsolete waiting-
 
 `CL-WORK` (#243) and `CL-REVIEW` (#244) are done. Justin adopted option 1 for both on 2026-11-09 at 10:43am CST ([#243](https://github.com/jmhill/yoink/issues/243#issuecomment-6745725026), [#244](https://github.com/jmhill/yoink/issues/244#issuecomment-6745725813)). `TOKEN-LIST` (#327) is done ([#340](https://github.com/jmhill/yoink/pull/340), `dc7da8044357eda0887f9a9fc7e86acb002b3a58`). [#327](https://github.com/jmhill/yoink/issues/327) is closed.
 
-The logical dependencies plus the serialization edges were checked together. There is no cycle. `M0.3` serializes after `M0.2` only. They are not mutual. `M4.1b` depends on `M4.1` and is a dependency of `M5.1`, `M5.3`, and `M5.5`. `M4.4` depends on `M5.3`, `M5.5`, and `M5.7`, and nothing in M5 depends on `M4.4` except through `M7.5`. `M3.7` depends on completed `M1.2` and is a dependency of `M7.5`. `OPENAPI-V1` depends on `M3.2` and is a dependency of `M7.1`, because announcing the alias sunset directs people to `/api/v1`. `M5.12b` depends on `M5.3`, `M5.7`, `M5.10-review`, and `M5.12`. `M5.11-access` depends on `M5.13-user` and `M5.12b`. `M7.5` depends on `M5.12b`. The access-service chain does not depend on `M5.11-access`.
+The logical dependencies plus the serialization edges were checked together. There is no cycle. `M0.3` serializes after `M0.2` only. They are not mutual. `M4.1b` depends on `M4.1` and is a dependency of `M5.1`, `M5.3`, and `M5.5`. `M4.4` depends on `M5.3`, `M5.5`, and `M5.7`, and nothing in M5 depends on `M4.4` except through `M7.5a`. `M3.7` depends on completed `M1.2` and is a dependency of `M7.5a`. `OPENAPI-V1` depends on `M3.2` and is a dependency of `M7.1`, because announcing the alias sunset directs people to `/api/v1`. `M5.12b` depends on `M5.3`, `M5.7`, `M5.10-review`, and `M5.12`. `M5.11-access` depends on `M5.13-user` and `M5.12b`. `M7.5a` depends on `M5.12b`. `M7.5b` depends on `M7.5a`, `M5.8d`, `M6.5-web`, and `M6.5-admin`. `M7.7` depends on `M7.5b`. M7.5 stays open while `edges/legacy/` exists. The access-service chain does not depend on `M5.11-access`.
 
 `M2.3` has no downstream issue. That note is not a new dependency. `M6.6`, `M7.3`, `M7.4`, `M7.6`, `M7.7`, `TOKEN-LIST`, and `LINT-ACCEPTANCE` are leaves. `LINT-ACCEPTANCE` puts this package's lint in quality and leaves the browser suite in the E2E job. It does not rewrite the ESLint baseline.
 
@@ -865,6 +880,7 @@ The logical dependencies plus the serialization edges were checked together. The
 | `M7.2` | `M7.1` | — | Gated | (a) ADR §9: the sunset date has passed, the alias has had no calls for 30 days, and any remaining token owner has been contacted. (b) Justin's explicit approval on #295. Green CI is not enough. | [#295](https://github.com/jmhill/yoink/issues/295) |
 | `M7.3` | `M7.2` | — | Not started | External gate: PLAN 7.7c is done, plus M7.2. Do not perform 7.7c here. | [#296](https://github.com/jmhill/yoink/issues/296) |
 | `M7.4` | `M5.10-review`, `M5.12` | — | Done (#406, `3ca473c7`, Trunk 43034876654). #297 is closed. | The five `/test-api` routes stay. Each writes a state no authed command produces. A process-wide clock would race parallel e2e. The harness cannot seed the Docker volume through the unit of work. The `edges/test-fixtures/` exemption stays. The allowlist stays empty. `app.ts` and `composition-root.ts` do not change. The process refuses to start when fixtures are on for Fly app `jhtc-yoink-api` or database `yoink-prod`. That refusal is Done (#410, `39ed8c77`, Trunk 43061150447). | [#297](https://github.com/jmhill/yoink/issues/297) |
-| `M7.5` | `M3.7`, `M4.4`, `M5.6`, `M5.8d`, `M5.9`, `M5.11-captures`, `M5.11-task-management`, `M5.11-notes`, `M5.11-review`, `M5.11-history`, `M5.11-access`, `M5.12b`, `M6.5-web`, `M6.5-admin` | — | In review | ADR §10 rules are `error`. The allowlist file is gone. Boundaries warnings are 0. Web stays 32. `app.ts` and `composition-root.ts` do not change. | [#298](https://github.com/jmhill/yoink/issues/298) |
+| `M7.5a` | `M3.7`, `M4.4`, `M5.6`, `M5.9`, `M5.11-captures`, `M5.11-task-management`, `M5.11-notes`, `M5.11-review`, `M5.11-history`, `M5.11-access`, `M5.12b` | — | In review | Enforce now. ADR §10 rules are `error`. The allowlist file is gone. Boundaries warnings are 0. Web stays 32. `app.ts` and `composition-root.ts` do not change. This part does not close #298. | [#298](https://github.com/jmhill/yoink/issues/298) |
+| `M7.5b` | `M7.5a`, `M5.8d`, `M6.5-web`, `M6.5-admin` | — | Not started | Confirm after legacy removal. Done only when M6.5-web (#291), M6.5-admin (#292), and M5.8d (#257) have landed, every ADR §10 rule is still `error`, and `edges/legacy/` no longer exists. M7.5 stays open while `edges/legacy/` exists. | [#298](https://github.com/jmhill/yoink/issues/298) |
 | `M7.6` | `M7.2`, `M6.5-web`, `M6.5-admin` | — | Not started | None. | [#299](https://github.com/jmhill/yoink/issues/299) |
-| `M7.7` | `M7.5` | — | Not started | Tycho reviews the grouped log before the status change. | [#300](https://github.com/jmhill/yoink/issues/300) |
+| `M7.7` | `M7.5b` | — | Not started | Tycho reviews the grouped log before the status change. | [#300](https://github.com/jmhill/yoink/issues/300) |

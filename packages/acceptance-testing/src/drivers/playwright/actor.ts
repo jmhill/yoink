@@ -4800,7 +4800,9 @@ export const createPlaywrightActor = (
             response.status() === 500
         );
         await page.keyboard.press('Delete');
-        await expect(ready).toHaveAttribute('data-process-key-lock', '');
+        // The lock is held only while the trash mutation is pending. An
+        // immediate 500 settles before the next poll, so the attribute is
+        // already gone. Waiting for it to appear is the flake.
         await firstFail;
         await expect(ready).toHaveAttribute('data-process-current', firstId);
         await expect(ready).not.toHaveAttribute('data-process-key-lock');

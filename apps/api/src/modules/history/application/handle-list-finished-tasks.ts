@@ -1,5 +1,5 @@
 import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
-import type { Task } from '@yoink/api-contracts';
+import type { ListedTask } from '../domain/model/listed-task.js';
 import type { InvalidCursorError } from '../../../kernel/listing/domain/invalid-cursor.js';
 import { resolveListLimit } from '../../../kernel/listing/domain/list-kind.js';
 import {
@@ -32,7 +32,7 @@ export type HandleListFinishedTasksOnProjectDeps = {
 export const handleListFinishedTasksOnProject = (
   query: ListFinishedTasksOnProjectQuery,
   deps: HandleListFinishedTasksOnProjectDeps
-): ResultAsync<ListedPage<Task>, ListFinishedTasksOnProjectError> => {
+): ResultAsync<ListedPage<ListedTask>, ListFinishedTasksOnProjectError> => {
   return deps.load(query.projectId).andThen((loaded) => {
     if (!loaded || loaded.organizationId !== query.organizationId) {
       return errAsync(projectNotFoundError(query.projectId));
@@ -53,7 +53,7 @@ export const handleListFinishedTasksOnProject = (
             completedBefore: query.completedBefore,
           })
           .andThen((page) => {
-            const rows: FinishedTask<Task>[] = [];
+            const rows: FinishedTask<ListedTask>[] = [];
             for (const task of page.rows) {
               const finished = asFinishedTask(task);
               if (!finished) {

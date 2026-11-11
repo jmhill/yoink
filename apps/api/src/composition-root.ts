@@ -700,8 +700,14 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
       ),
   });
   const historyHandlers = createHistoryHandlers({
-    loadProject: (id) => projectStore.findById(id),
-    loadTaskIncludingDeleted: (id) => taskStore.findByIdIncludingDeleted(id),
+    loadProject: (id) =>
+      projectStore.findById(id).map((project) =>
+        project === null ? null : { organizationId: project.organizationId }
+      ),
+    loadTaskIncludingDeleted: (id) =>
+      taskStore.findByIdIncludingDeleted(id).map((task) =>
+        task === null ? null : { organizationId: task.organizationId }
+      ),
     pageProjectHistory: (options) => changeLogStore.pageVisibleForProject(options),
     pageTaskHistory: (options) => changeLogStore.pageVisibleForTask(options),
     pageFinishedTasksInProject: (options) => taskStore.pageFinishedInProject(options),

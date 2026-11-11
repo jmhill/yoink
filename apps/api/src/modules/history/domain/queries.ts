@@ -1,4 +1,4 @@
-import type { HistoryPage, TimelineEntry } from '@yoink/api-contracts';
+import type { HistoryPage, TimelineEntry } from './model/timeline-document.js';
 
 export type ListProjectHistoryQuery = {
   projectId: string;

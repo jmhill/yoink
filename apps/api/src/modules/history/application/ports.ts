@@ -1,5 +1,5 @@
 import type { ResultAsync } from 'neverthrow';
-import type { Project, Task } from '@yoink/api-contracts';
+import type { ListedTask } from '../domain/model/listed-task.js';
 import type { HistoryReadLogger } from '../../../kernel/history-read-logger.js';
 import type { KeysetCursor } from '../../../kernel/listing/domain/keyset-cursor.js';
 import type { KeysetRows } from '../../../kernel/listing/domain/listed-page.js';
@@ -12,11 +12,21 @@ import type { TimelineLookups } from '../domain/to-timeline-entry.js';
 
 export type { HistoryReadLogger };
 
-export type LoadProject = (id: string) => ResultAsync<Project | null, StorageError>;
+/** Organization of a project. Task Management owns the rest of the project. */
+export type ProjectScope = {
+  readonly organizationId: string;
+};
+
+/** Organization of a task. Task Management owns the rest of the task. */
+export type TaskScope = {
+  readonly organizationId: string;
+};
+
+export type LoadProject = (id: string) => ResultAsync<ProjectScope | null, StorageError>;
 
 export type LoadTaskIncludingDeleted = (
   id: string
-) => ResultAsync<Task | null, StorageError>;
+) => ResultAsync<TaskScope | null, StorageError>;
 
 export type PageProjectHistory = (options: {
   organizationId: string;
@@ -39,7 +49,7 @@ export type PageFinishedTasksInProject = (options: {
   seek?: KeysetCursor;
   completedAfter?: string;
   completedBefore?: string;
-}) => ResultAsync<KeysetRows<Task>, StorageError>;
+}) => ResultAsync<KeysetRows<ListedTask>, StorageError>;
 
 /** Task title and soft-delete flag. Task Management owns the rest of the task. */
 export type TaskSubject = {

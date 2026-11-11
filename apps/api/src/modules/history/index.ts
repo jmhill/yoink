@@ -1,3 +1,11 @@
+export type { ListedTask } from './domain/model/listed-task.js';
+export type {
+  HistoryPage,
+  TimelineDetails,
+  TimelineEntry,
+  TimelineEntryKind,
+} from './domain/model/timeline-document.js';
+export { HISTORY_STARTS_AT } from './domain/model/timeline-document.js';
 export {
   createHistoryHandlers,
   type HistoryHandlerDeps,

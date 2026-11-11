@@ -107,10 +107,7 @@ const platformPackages = [...adapterPackages, '@yoink/infrastructure'];
 const edgePackages = [...adapterPackages, '@yoink/api-contracts'];
 
 const elements = [
-  // M4.2 moved history to src/modules/history without the target layer rules.
-  // Those rules would warn on imports this code already has. This descriptor
-  // is first, so the current history element wins. M5.11-history removes it.
-  { type: 'history', pattern: 'src/modules/history/**', mode: 'full' },
+  // M5.11-history removed the src/modules/history/** current element.
   // M5.11-captures removed the src/modules/captures/** current element.
   // The folder-mode src/captures/** pattern below stays for boundary fixtures.
   // M5.11-task-management removed the src/modules/task-management/** current
@@ -383,10 +380,15 @@ export default [
             { from: 'captures', allow: ['captures'] },
             // M3.6 moved the health HTTP tests onto the ops edge.
             { from: 'health', allow: ['health'] },
-            // M5.11-task-management. History still imports task-management
-            // domain types. The current element used to cover that. M5.10-history
-            // moves the lookups onto ports.
-            { from: 'history', allow: ['history', ['module-domain', { module: 'task-management' }]] },
+            // M5.11-history. Application and tests still import task-management
+            // domain errors. The current element used to cover that.
+            {
+              from: [
+                ['module-application', { module: 'history' }],
+                ['module-test', { module: 'history' }],
+              ],
+              allow: [['module-domain', { module: 'task-management' }]],
+            },
             // M4.2: lists, notes, and processing still import the change log.
             { from: 'lists', allow: ['lists', 'history'] },
             { from: 'projects', allow: ['projects', 'history'] },
@@ -435,8 +437,9 @@ export default [
                 'platform-sql',
               ],
             },
-            // M5.11-task-management. The current element is gone. Change-log
-            // records still live in history, and this module writes them.
+            // M5.11-task-management. Change-log records still live in history,
+            // and this module writes them. M5.11-history removed the history
+            // element, so the allow names the layers those imports are now.
             // Stored notebook pages are JSON parsed with the shared helper.
             {
               from: [
@@ -445,7 +448,18 @@ export default [
                 ['module-infrastructure', { module: 'task-management' }],
                 ['module-test', { module: 'task-management' }],
               ],
-              allow: ['history'],
+              allow: [
+                ['module-domain', { module: 'history' }],
+                ['module-application', { module: 'history' }],
+                ['module-infrastructure', { module: 'history' }],
+                ['module-testing', { module: 'history' }],
+              ],
+            },
+            // M5.11-history. testing.ts re-exports the in-memory change log and
+            // the fake participant. They are not under infrastructure/fakes/.
+            {
+              from: [['module-testing', { module: 'history' }]],
+              allow: [['module-infrastructure', { module: 'history' }]],
             },
             {
               from: [['module-infrastructure', { module: 'task-management' }]],
@@ -564,14 +578,15 @@ export default [
             // M3.2. Only the public-api edge, not every edge. These are the
             // module handlers this edge still calls:
             // M5.1 captures, M5.2 task-management, M5.7 notes,
-            // M5.10 review, M5.10-history history.
+            // M5.10 review. M5.11-history history is module-entry, which the
+            // general edge rule already allows.
             // Processing is a workflow, reached through workflow-entry on the
             // general edge rule. Access is not allowed.
             // Task, project, list, and work routes call the task-management
             // index, which is module-entry.
             {
               from: [['edge', { edge: 'public-api' }]],
-              allow: ['captures', 'notes', 'review', 'history'],
+              allow: ['captures', 'notes', 'review'],
             },
             // M6.1. The extension edge calls the captures interface only.
             {
@@ -670,7 +685,7 @@ export default [
                 'captures',
                 'notes',
                 'review',
-                'history',
+                ['module-infrastructure', { module: 'history' }],
                 'platform-database',
               ],
             },
@@ -751,6 +766,12 @@ export default [
             {
               from: [['module-test', { module: 'task-management' }]],
               allow: ['node:*'],
+            },
+            // M5.11-history. The event-sink test opens a temp libsql file.
+            // The current element allowed node:* and @libsql/client.
+            {
+              from: [['module-test', { module: 'history' }]],
+              allow: ['node:*', '@libsql/client'],
             },
             {
               from: ['workflow-test', 'kernel-test'],

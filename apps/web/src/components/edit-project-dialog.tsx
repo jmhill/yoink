@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { Button } from '@yoink/ui-base/components/button';
 import { Input } from '@yoink/ui-base/components/input';
 import { Label } from '@yoink/ui-base/components/label';
@@ -37,17 +37,23 @@ export function EditProjectDialog({
   const [pages, setPages] = useState(project.notebookPages.map((page) => page.path));
   const [newPage, setNewPage] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
+  const [appliedOpen, setAppliedOpen] = useState(false);
 
-  useEffect(() => {
-    if (!open) {
-      return;
+  // Copy the project into the form on the open transition, during render, so
+  // the first painted field values are the saved ones. An effect that also
+  // reruns when `project` changes lands mid-keystroke: the live project query
+  // replaces a cleared field with the old name, and the rest of the typed
+  // name is appended. A refresh while the dialog stays open must not do that.
+  if (open !== appliedOpen) {
+    setAppliedOpen(open);
+    if (open) {
+      setName(project.name);
+      setObjective(project.objective ?? '');
+      setPages(project.notebookPages.map((page) => page.path));
+      setNewPage('');
+      setLocalError(null);
     }
-    setName(project.name);
-    setObjective(project.objective ?? '');
-    setPages(project.notebookPages.map((page) => page.path));
-    setNewPage('');
-    setLocalError(null);
-  }, [open, project]);
+  }
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();

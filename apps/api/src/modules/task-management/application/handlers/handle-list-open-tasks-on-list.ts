@@ -1,5 +1,6 @@
+import type { Task } from '../../domain/model/task.js';
 import { errAsync, type ResultAsync } from 'neverthrow';
-import type { Task } from '@yoink/api-contracts';
+
 import type { ListOpenTasksOnListQuery } from '../../domain/messages/list-queries.js';
 import type { ListOpenTasksOnListError } from '../../domain/messages/list-errors.js';
 import { listNotFoundError } from '../../domain/messages/list-errors.js';

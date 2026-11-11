@@ -1,4 +1,4 @@
-import type { Project } from '@yoink/api-contracts';
+import type { Project } from '../model/project-document.js';
 import type { ChangeLogRecord } from '../../../history/domain/record.js';
 import { hiddenFor } from '../../../history/domain/kinds.js';
 import type { ProjectImportedPayloadV1 } from '../../../history/domain/payloads.js';

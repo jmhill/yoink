@@ -1,5 +1,7 @@
+import type { Project } from '../model/project-document.js';
+import type { Task } from '../model/task.js';
 import { err, ok, type Result } from 'neverthrow';
-import type { Project, Task } from '@yoink/api-contracts';
+
 import type { SetProjectNextActionCommand } from '../messages/project-commands.js';
 import type { ProjectNextActionCleared, ProjectNextActionSet } from '../messages/project-events.js';
 import {

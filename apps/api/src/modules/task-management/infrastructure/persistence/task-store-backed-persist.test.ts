@@ -1,3 +1,4 @@
+import type { Task } from '../../domain/model/task.js';
 import { describe, it, expect } from 'vitest';
 import { errAsync } from 'neverthrow';
 import { createFakeTaskStore } from '../fakes/fake-task-store.js';
@@ -10,7 +11,7 @@ import {
   changeLogIdsForTaskUpdated,
   type TaskChangeLogIds,
 } from '../../domain/projections/task-change-log-records.js';
-import type { Task } from '@yoink/api-contracts';
+
 import type { TaskEvent } from '../../domain/messages/task-events.js';
 
 const current: Task = {

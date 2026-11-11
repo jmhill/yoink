@@ -1,6 +1,7 @@
+import type { Project } from '../../domain/model/project-document.js';
 import { describe, it, expect } from 'vitest';
 import { okAsync } from 'neverthrow';
-import type { Project } from '@yoink/api-contracts';
+
 import { handleUpdateProject } from './handle-update-project.js';
 import type { ListProjects, LoadProject, PersistProjectChange } from '../ports.js';
 import type { ProjectChangePlan } from '../../domain/projections/plan-project-change.js';

@@ -1,4 +1,4 @@
-import type { ImportProject, StagedImportStatus } from '@yoink/api-contracts';
+import type { ImportProject, StagedImportStatus } from './import-document.js';
 
 export type ProjectImportRecord = {
   id: string;

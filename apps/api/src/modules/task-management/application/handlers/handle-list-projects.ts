@@ -1,6 +1,7 @@
+import type { Project } from '../../domain/model/project-document.js';
 import type { ResultAsync } from 'neverthrow';
 import { errAsync } from 'neverthrow';
-import type { Project } from '@yoink/api-contracts';
+
 import type { ListProjectsQuery } from '../../domain/messages/project-queries.js';
 import type { ListProjectsError } from '../../domain/messages/project-errors.js';
 import { resolveListLimit } from '../../../../kernel/listing/domain/list-kind.js';

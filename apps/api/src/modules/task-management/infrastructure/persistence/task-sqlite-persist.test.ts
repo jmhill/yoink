@@ -1,3 +1,4 @@
+import type { Task } from '../../domain/model/task.js';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createTestDatabase } from '../../../../platform/database/test-utils.js';
 import type { Database } from '../../../../platform/database/types.js';
@@ -11,7 +12,7 @@ import {
   type TaskUncompletedChangeLogIds,
 } from '../../domain/projections/task-change-log-records.js';
 import { UNLISTED_PILE_SUBJECT_ID } from '../../../history/domain/kinds.js';
-import type { Task } from '@yoink/api-contracts';
+
 import type { TaskCreated, TaskEvent, TaskUncompleted } from '../../domain/messages/task-events.js';
 
 const now = '2025-01-15T10:00:00.000Z';

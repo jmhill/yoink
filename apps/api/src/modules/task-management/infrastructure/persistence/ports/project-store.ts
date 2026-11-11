@@ -1,5 +1,6 @@
+import type { Project } from '../../../domain/model/project-document.js';
 import type { ResultAsync } from 'neverthrow';
-import type { Project } from '@yoink/api-contracts';
+
 import type { KeysetCursor } from '../../../../../kernel/listing/domain/keyset-cursor.js';
 import type { KeysetRows } from '../../../../../kernel/listing/domain/listed-page.js';
 import type { ProjectNotFoundError, StorageError } from '../../../domain/messages/project-errors.js';

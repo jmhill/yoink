@@ -1,5 +1,7 @@
+import type { Project } from '../model/project-document.js';
+import type { Task } from '../model/task.js';
 import { describe, it, expect } from 'vitest';
-import type { Project, Task } from '@yoink/api-contracts';
+
 import { decideSetNextAction } from './decide-set-next-action.js';
 import type { SetProjectNextActionCommand } from '../messages/project-commands.js';
 

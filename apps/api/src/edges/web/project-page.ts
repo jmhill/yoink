@@ -5,6 +5,12 @@ import type {
   SetProjectNextActionCommand,
 } from '../../modules/task-management/index.js';
 import { toTaskListBody } from '../_shared/http-listed-page.js';
+import {
+  toContractAppliedImport,
+  toContractDiscardedImport,
+  toContractProject,
+  toContractStagedImport,
+} from '../_shared/map-task-document.js';
 import type { OrpcHttpContext } from '../_shared/orpc/http-context.js';
 import {
   mapApplyImportError,
@@ -60,7 +66,7 @@ export const createWebProjectPageHandlers = (deps: WebProjectPageDependencies) =
         organizationId: context.request.authContext.organizationId,
       });
       return result.match(
-        (view) => view,
+        (view) => toContractProject(view),
         (error) => {
           throw mapGetProjectError(error);
         }
@@ -92,7 +98,7 @@ export const createWebProjectPageHandlers = (deps: WebProjectPageDependencies) =
         actor: context.request.authContext.actor,
       });
       return result.match(
-        ({ view }) => view,
+        ({ view }) => toContractProject(view),
         (error) => {
           throw mapUpdateProjectError(error);
         }
@@ -110,7 +116,7 @@ export const createWebProjectPageHandlers = (deps: WebProjectPageDependencies) =
       });
       return result.match(
         ({ view, completedTaskCount, removedTaskCount }) => ({
-          project: view,
+          project: toContractProject(view),
           completedTaskCount,
           removedTaskCount,
         }),
@@ -134,7 +140,7 @@ export const createWebProjectPageHandlers = (deps: WebProjectPageDependencies) =
       const result = await deps.projectHandlers.setNextAction(command);
       return result.match(
         ({ view, task }) => ({
-          project: view,
+          project: toContractProject(view),
           ...(task ? { task: { id: task.id, title: task.title } } : {}),
         }),
         (error) => {
@@ -156,7 +162,7 @@ export const createWebProjectPageHandlers = (deps: WebProjectPageDependencies) =
       });
       return result.match(
         ({ view, task }) => ({
-          project: view,
+          project: toContractProject(view),
           ...(task ? { task: { id: task.id, title: task.title } } : {}),
         }),
         (error) => {
@@ -171,7 +177,7 @@ export const createWebProjectPageHandlers = (deps: WebProjectPageDependencies) =
         actor: context.request.authContext.actor,
       });
       return result.match(
-        ({ view }) => view,
+        ({ view }) => toContractProject(view),
         (error) => {
           throw mapDeclineProposalError(error);
         }
@@ -184,7 +190,7 @@ export const createWebProjectPageHandlers = (deps: WebProjectPageDependencies) =
         actor: context.request.authContext.actor,
       });
       return result.match(
-        ({ view }) => view,
+        ({ view }) => toContractProject(view),
         (error) => {
           throw mapRestoreProposalError(error);
         }
@@ -195,7 +201,7 @@ export const createWebProjectPageHandlers = (deps: WebProjectPageDependencies) =
         organizationId: context.request.authContext.organizationId,
       });
       return result.match(
-        (body) => body,
+        (body) => ({ imports: body.imports.map(toContractStagedImport) }),
         (error) => {
           throw mapListImportsError(error);
         }
@@ -209,7 +215,7 @@ export const createWebProjectPageHandlers = (deps: WebProjectPageDependencies) =
         actor: context.request.authContext.actor,
       });
       return result.match(
-        (view) => view,
+        (view) => toContractStagedImport(view),
         (error) => {
           throw mapGetImportError(error);
         }
@@ -222,7 +228,7 @@ export const createWebProjectPageHandlers = (deps: WebProjectPageDependencies) =
         actor: context.request.authContext.actor,
       });
       return result.match(
-        (view) => view,
+        (view) => toContractAppliedImport(view),
         (error) => {
           throw mapApplyImportError(error);
         }
@@ -235,7 +241,7 @@ export const createWebProjectPageHandlers = (deps: WebProjectPageDependencies) =
         actor: context.request.authContext.actor,
       });
       return result.match(
-        (view) => view,
+        (view) => toContractDiscardedImport(view),
         (error) => {
           throw mapDiscardImportError(error);
         }

@@ -1,5 +1,6 @@
+import type { NamedList } from '../model/named-list.js';
 import { describe, it, expect } from 'vitest';
-import type { NamedList } from '@yoink/api-contracts';
+
 import { applyNamedListEvent } from './apply-named-list-event.js';
 import type { NamedListCreated } from '../messages/list-events.js';
 

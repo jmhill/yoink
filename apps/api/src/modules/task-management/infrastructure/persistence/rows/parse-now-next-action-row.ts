@@ -1,6 +1,7 @@
+import type { NowNextActionItem } from '../../../domain/model/work-item.js';
 import { err, ok, type Result } from 'neverthrow';
 import { z } from 'zod';
-import type { NowNextActionItem } from '@yoink/api-contracts';
+
 import { parseTaskRow } from './parse-task-row.js';
 import { storageError, type StorageError } from '../../../domain/messages/work-errors.js';
 

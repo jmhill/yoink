@@ -2,6 +2,7 @@ import { implement } from '@orpc/server';
 import { webListsContract, webTasksContract } from '@yoink/api-contracts/web';
 import type { ListHandlers, TaskHandlers } from '../../modules/task-management/index.js';
 import { toNamedListListBody, toTaskListBody } from '../_shared/http-listed-page.js';
+import { toContractNamedList, toContractTask } from '../_shared/map-task-document.js';
 import type { OrpcHttpContext } from '../_shared/orpc/http-context.js';
 import {
   mapCompleteTaskError,
@@ -74,7 +75,7 @@ export const createWebTasksListsHandlers = (deps: WebTasksListsDependencies) => 
           actor: context.request.authContext.actor,
         });
         return result.match(
-          ({ view }) => view,
+          ({ view }) => toContractNamedList(view),
           (error) => {
             throw mapCreateNamedListError(error);
           }
@@ -88,7 +89,7 @@ export const createWebTasksListsHandlers = (deps: WebTasksListsDependencies) => 
           actor: context.request.authContext.actor,
         });
         return result.match(
-          ({ view }) => view,
+          ({ view }) => toContractNamedList(view),
           (error) => {
             throw mapRenameNamedListError(error);
           }
@@ -129,7 +130,7 @@ export const createWebTasksListsHandlers = (deps: WebTasksListsDependencies) => 
           actor: context.request.authContext.actor,
         });
         return result.match(
-          ({ tasks: ordered }) => ({ tasks: ordered }),
+          ({ tasks: ordered }) => ({ tasks: ordered.map(toContractTask) }),
           (error) => {
             throw mapReorderOpenTasksError(error);
           }
@@ -155,7 +156,7 @@ export const createWebTasksListsHandlers = (deps: WebTasksListsDependencies) => 
           actor: context.request.authContext.actor,
         });
         return result.match(
-          ({ tasks: ordered }) => ({ tasks: ordered }),
+          ({ tasks: ordered }) => ({ tasks: ordered.map(toContractTask) }),
           (error) => {
             throw mapReorderUnlistedOpenTasksError(error);
           }
@@ -175,7 +176,7 @@ export const createWebTasksListsHandlers = (deps: WebTasksListsDependencies) => 
           actor: context.request.authContext.actor,
         });
         return result.match(
-          ({ view }) => view,
+          ({ view }) => toContractTask(view),
           (error) => {
             throw mapCreateTaskError(error);
           }
@@ -209,7 +210,7 @@ export const createWebTasksListsHandlers = (deps: WebTasksListsDependencies) => 
           actor: context.request.authContext.actor,
         });
         return result.match(
-          ({ view }) => view,
+          ({ view }) => toContractTask(view),
           (error) => {
             throw mapUpdateTaskError(error);
           }
@@ -222,7 +223,7 @@ export const createWebTasksListsHandlers = (deps: WebTasksListsDependencies) => 
           actor: context.request.authContext.actor,
         });
         return result.match(
-          ({ view }) => view,
+          ({ view }) => toContractTask(view),
           (error) => {
             throw mapCompleteTaskError(error);
           }
@@ -235,7 +236,7 @@ export const createWebTasksListsHandlers = (deps: WebTasksListsDependencies) => 
           actor: context.request.authContext.actor,
         });
         return result.match(
-          ({ view }) => view,
+          ({ view }) => toContractTask(view),
           (error) => {
             throw mapUncompleteTaskError(error);
           }

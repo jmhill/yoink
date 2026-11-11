@@ -1,5 +1,18 @@
 // Commands, queries, and prepare are the published surface. The handler
 // factories stay so existing callers and tests keep their ports.
+export type { NamedList } from './domain/model/named-list.js';
+export type {
+  AppliedImport,
+  DiscardedImport,
+  ImportPreview,
+  ImportProject,
+  StagedImport,
+  StagedImportStatus,
+} from './domain/model/import-document.js';
+export type { NowNextActionItem, NowOwner } from './domain/model/work-item.js';
+export type { AssignableProjectStatus, Project, ProjectStatus } from './domain/model/project-document.js';
+export type { Task, TaskFilter } from './domain/model/task.js';
+export { buildObsidianUrl } from './domain/rules/notebook-pages.js';
 export {
   createTaskManagement,
   type CreateTaskManagementDeps,

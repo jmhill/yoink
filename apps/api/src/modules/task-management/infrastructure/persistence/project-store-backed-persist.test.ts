@@ -1,3 +1,5 @@
+import type { Project } from '../../domain/model/project-document.js';
+import type { Task } from '../../domain/model/task.js';
 import { describe, it, expect } from 'vitest';
 import { errAsync } from 'neverthrow';
 import { createFakeProjectStore } from '../fakes/fake-project-store.js';
@@ -6,7 +8,6 @@ import { createFakeTaskStore } from '../fakes/fake-task-store.js';
 import { createFakeChangeLogStore } from '../../../history/testing.js';
 import { planProjectChange } from '../../domain/projections/plan-project-change.js';
 import { planTaskChange } from '../../domain/projections/plan-task-change.js';
-import type { Project, Task } from '@yoink/api-contracts';
 
 const now = '2025-01-15T10:00:00.000Z';
 const later = '2025-01-15T11:00:00.000Z';

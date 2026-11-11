@@ -1,5 +1,6 @@
+import type { ImportPreview, ImportProject, StagedImport } from '../../domain/model/import-document.js';
 import { ResultAsync } from 'neverthrow';
-import type { ImportPreview, ImportProject, StagedImport } from '@yoink/api-contracts';
+
 import type { ListImportsError } from '../../domain/messages/project-errors.js';
 import type { ListPendingImports, LoadUserName } from '../ports.js';
 

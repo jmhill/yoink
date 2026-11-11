@@ -1,4 +1,4 @@
-import type { NamedList } from '@yoink/api-contracts';
+import type { NamedList } from '../model/named-list.js';
 import type { Actor } from '../../../../kernel/auth-context.js';
 import type { ChangeLogRecord } from '../../../history/domain/record.js';
 import { applyNamedListCreated, applyNamedListRenamed } from './apply-named-list-event.js';

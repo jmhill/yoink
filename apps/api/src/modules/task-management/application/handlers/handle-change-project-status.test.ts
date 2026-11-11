@@ -1,6 +1,8 @@
+import type { Project } from '../../domain/model/project-document.js';
+import type { Task } from '../../domain/model/task.js';
 import { describe, it, expect } from 'vitest';
 import { okAsync } from 'neverthrow';
-import type { Project, Task } from '@yoink/api-contracts';
+
 import { handleChangeProjectStatus } from './handle-change-project-status.js';
 import type { PersistProjectStatusChange } from '../ports.js';
 

@@ -1,5 +1,6 @@
+import type { ImportProject } from '../../domain/model/import-document.js';
 import { ResultAsync } from 'neverthrow';
-import type { ImportProject } from '@yoink/api-contracts';
+
 import type { StorageError } from '../../domain/messages/project-errors.js';
 import type { DecideImportInput } from '../../domain/decisions/decide-import.js';
 import type {

@@ -1,4 +1,4 @@
-import type { NamedList } from '@yoink/api-contracts';
+import type { NamedList } from '../../../domain/model/named-list.js';
 import type { SqlQuery } from '../../../../history/infrastructure/sql.js';
 
 export const insertListQuery = (list: NamedList): SqlQuery => ({

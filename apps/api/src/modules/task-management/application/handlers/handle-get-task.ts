@@ -1,5 +1,6 @@
+import type { Task } from '../../domain/model/task.js';
 import type { ResultAsync } from 'neverthrow';
-import type { Task } from '@yoink/api-contracts';
+
 import type { FindTaskQuery } from '../../domain/messages/task-commands.js';
 import type { FindTaskError } from '../../domain/messages/task-errors.js';
 import type { LoadTask } from '../ports.js';

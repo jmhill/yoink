@@ -1,4 +1,4 @@
-import type { Project } from '@yoink/api-contracts';
+import type { Project } from '../model/project-document.js';
 import type { Actor } from '../../../../kernel/auth-context.js';
 import { nextActionClearFor, type NextActionTaskChange } from '../rules/next-action-clear.js';
 import { planProjectChange, type ProjectChangePlan } from './plan-project-change.js';

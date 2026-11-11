@@ -1,5 +1,6 @@
+import type { Project } from '../model/project-document.js';
 import { describe, it, expect } from 'vitest';
-import type { Project } from '@yoink/api-contracts';
+
 import { decideConfirmProposal } from './decide-confirm-proposal.js';
 import type { ConfirmProposedProjectCommand } from '../messages/project-commands.js';
 

@@ -3,6 +3,7 @@ import { implement } from '@orpc/server';
 import { listOrpcContract } from '@yoink/api-contracts/orpc';
 import { publicApiV1Contract } from '@yoink/api-contracts/public-api/v1';
 import { toNamedListListBody, toTaskListBody } from '../../_shared/http-listed-page.js';
+import { toContractNamedList, toContractTask } from '../../_shared/map-task-document.js';
 import { yoinkOpenApiHandlerOptions } from '../../_shared/orpc/handler-options.js';
 import type { OrpcHttpContext } from '../../_shared/orpc/http-context.js';
 import type { ListHandlers } from '../../../modules/task-management/index.js';
@@ -46,7 +47,7 @@ export const createListHandlers = (deps: ListEdgeDependencies) => {
       actor: context.request.authContext.actor,
     });
     return result.match(
-      ({ view }) => view,
+      ({ view }) => toContractNamedList(view),
       (error) => {
         throw mapCreateNamedListError(error);
       },
@@ -60,7 +61,7 @@ export const createListHandlers = (deps: ListEdgeDependencies) => {
       actor: context.request.authContext.actor,
     });
     return result.match(
-      ({ view }) => view,
+      ({ view }) => toContractNamedList(view),
       (error) => {
         throw mapRenameNamedListError(error);
       },
@@ -88,7 +89,7 @@ export const createListHandlers = (deps: ListEdgeDependencies) => {
       actor: context.request.authContext.actor,
     });
     return result.match(
-      ({ tasks }) => ({ tasks }),
+      ({ tasks }) => ({ tasks: tasks.map(toContractTask) }),
       (error) => {
         throw mapReorderOpenTasksError(error);
       },
@@ -114,7 +115,7 @@ export const createListHandlers = (deps: ListEdgeDependencies) => {
       actor: context.request.authContext.actor,
     });
     return result.match(
-      ({ tasks }) => ({ tasks }),
+      ({ tasks }) => ({ tasks: tasks.map(toContractTask) }),
       (error) => {
         throw mapReorderUnlistedOpenTasksError(error);
       },

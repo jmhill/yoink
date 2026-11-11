@@ -1,5 +1,6 @@
+import type { Task } from '../model/task.js';
 import { err, ok, type Result } from 'neverthrow';
-import type { Task } from '@yoink/api-contracts';
+
 import type { ReorderOpenTasksCommand } from '../messages/list-commands.js';
 import type { OpenTasksReordered } from '../messages/list-events.js';
 import {

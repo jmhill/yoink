@@ -1,5 +1,6 @@
+import type { Task } from '../model/task.js';
 import { ok, type Result } from 'neverthrow';
-import type { Task } from '@yoink/api-contracts';
+
 import type { CompleteTaskCommand } from '../messages/task-commands.js';
 import type { Noop, TaskCompleted } from '../messages/task-events.js';
 

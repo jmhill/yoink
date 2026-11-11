@@ -28,7 +28,6 @@ const currentFeatureTypes = [
   'review',
   'shared',
   'tasks',
-  'task-management',
   'work',
 ];
 
@@ -114,13 +113,9 @@ const elements = [
   { type: 'history', pattern: 'src/modules/history/**', mode: 'full' },
   // M5.11-captures removed the src/modules/captures/** current element.
   // The folder-mode src/captures/** pattern below stays for boundary fixtures.
-  // M5.2 moved tasks, projects, lists, and work into task-management.
-  // Target layer rules disallow @yoink/api-contracts, which this module still
-  // imports until M5.11-task-management. Turning those rules on would add a
-  // warning per import. This descriptor is first, so the current element wins.
-  // M5.11-task-management removes it. The old src/tasks, src/projects,
-  // src/lists, and src/work patterns stay for boundary fixtures.
-  { type: 'task-management', pattern: 'src/modules/task-management/**', mode: 'full' },
+  // M5.11-task-management removed the src/modules/task-management/** current
+  // element. The old src/tasks, src/projects, src/lists, and src/work patterns
+  // stay for boundary fixtures.
   // M5.7 moved notes. Target layer rules disallow @yoink/api-contracts, which
   // this module still imports until M5.11-notes. This descriptor is first, so
   // the current element wins. M5.11-notes removes it. The old src/notes/**
@@ -388,7 +383,10 @@ export default [
             { from: 'captures', allow: ['captures'] },
             // M3.6 moved the health HTTP tests onto the ops edge.
             { from: 'health', allow: ['health'] },
-            { from: 'history', allow: ['history', 'task-management'] },
+            // M5.11-task-management. History still imports task-management
+            // domain types. The current element used to cover that. M5.10-history
+            // moves the lookups onto ports.
+            { from: 'history', allow: ['history', ['module-domain', { module: 'task-management' }]] },
             // M4.2: lists, notes, and processing still import the change log.
             { from: 'lists', allow: ['lists', 'history'] },
             { from: 'projects', allow: ['projects', 'history'] },
@@ -397,9 +395,6 @@ export default [
             { from: 'notes', allow: ['notes'] },
             { from: 'review', allow: ['review'] },
             { from: 'work', allow: ['work'] },
-            // M5.2. One element, so tasks, projects, lists, and the Now queries
-            // import each other. History stays until M5.3 moves the change log.
-            { from: 'task-management', allow: ['task-management', 'history'] },
             { from: 'server', allow: ['server'] },
             // Rule 1. Own module only; capture is the module directory name.
             {
@@ -439,6 +434,22 @@ export default [
                 'platform-database',
                 'platform-sql',
               ],
+            },
+            // M5.11-task-management. The current element is gone. Change-log
+            // records still live in history, and this module writes them.
+            // Stored notebook pages are JSON parsed with the shared helper.
+            {
+              from: [
+                ['module-domain', { module: 'task-management' }],
+                ['module-application', { module: 'task-management' }],
+                ['module-infrastructure', { module: 'task-management' }],
+                ['module-test', { module: 'task-management' }],
+              ],
+              allow: ['history'],
+            },
+            {
+              from: [['module-infrastructure', { module: 'task-management' }]],
+              allow: ['edge-shared'],
             },
             {
               from: 'module-entry',
@@ -521,20 +532,6 @@ export default [
                 'tests',
               ],
             },
-            // M5.5. Task Management's index is still the current
-            // `task-management` element until M5.11-task-management, so a
-            // workflow import of that index is not a module-entry import.
-            // Workflows import index.ts only. Captures is already module-entry.
-            {
-              from: [
-                'workflow-domain',
-                'workflow-application',
-                'workflow-policies',
-                'workflow-entry',
-                'workflow-test',
-              ],
-              allow: ['task-management'],
-            },
             // Rule 5. Platform except database and sql. test-fixtures is the
             // ADR exception that may touch SQL. Full mode makes each edge file
             // its own element, so files in one edge must be allowed by capture.
@@ -570,10 +567,11 @@ export default [
             // M5.10 review, M5.10-history history.
             // Processing is a workflow, reached through workflow-entry on the
             // general edge rule. Access is not allowed.
-            // Task, project, list, and work routes call task-management.
+            // Task, project, list, and work routes call the task-management
+            // index, which is module-entry.
             {
               from: [['edge', { edge: 'public-api' }]],
-              allow: ['captures', 'notes', 'review', 'task-management', 'history'],
+              allow: ['captures', 'notes', 'review', 'history'],
             },
             // M6.1. The extension edge calls the captures interface only.
             {
@@ -590,7 +588,7 @@ export default [
             // M5.13 replaces the access handlers. This edge does not import access SQL.
             {
               from: [['edge', { edge: 'web' }]],
-              allow: ['captures', 'access', 'task-management'],
+              allow: ['captures', 'access'],
             },
             // M3.3. Only the legacy client edge. These routes still call today's
             // access handlers. M6 moves each client to its own edge. M5.12 and
@@ -646,14 +644,14 @@ export default [
             },
             // M3.6. Legacy HTTP tests use the access fakes and boot helpers
             // they already used. Production legacy still cannot import
-            // task-management, composition, or platform-database.
+            // composition, or platform-database. Task-management fakes are
+            // module-testing, which every test type may import.
             {
               from: [['edge-test', { edge: 'legacy' }]],
               allow: [
                 'access',
                 'platform-database',
                 'composition',
-                'task-management',
                 ['edge', { edge: 'admin' }],
               ],
             },
@@ -672,7 +670,6 @@ export default [
                 'captures',
                 'notes',
                 'review',
-                'task-management',
                 'history',
                 'platform-database',
               ],
@@ -748,6 +745,12 @@ export default [
             {
               from: 'module-test',
               allow: [...domainPackages, 'vitest', '@vitest/*', '@yoink/infrastructure'],
+            },
+            // M5.11-task-management. The unit-of-work test opens a temp database
+            // file. The current element allowed node:*. This test still does.
+            {
+              from: [['module-test', { module: 'task-management' }]],
+              allow: ['node:*'],
             },
             {
               from: ['workflow-test', 'kernel-test'],

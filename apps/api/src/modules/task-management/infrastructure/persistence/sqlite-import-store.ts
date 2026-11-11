@@ -1,13 +1,37 @@
 import { err, errAsync, ok, okAsync, Result, ResultAsync } from 'neverthrow';
 import { z } from 'zod';
-import { ImportProjectSchema } from '@yoink/api-contracts';
 import type { Database } from '../../../../platform/database/types.js';
 import { parseJson } from '../../../../edges/_shared/parse-json.js';
 import { storageError, type StorageError } from '../../domain/messages/project-errors.js';
 import type { ProjectImportRecord } from '../../domain/model/project-import.js';
 
+const importNewTaskSchema = z.object({
+  key: z.string().min(1),
+  title: z.string(),
+  dueDate: z.string().optional(),
+  assigneeId: z.string().uuid().optional(),
+  listId: z.string().uuid().optional(),
+});
+
+const importNextActionSchema = z.union([
+  z.object({ existingTaskId: z.string().uuid() }),
+  z.object({ newTaskKey: z.string().min(1) }),
+]);
+
+const importProjectSchema = z.object({
+  name: z.string(),
+  objective: z.string().optional(),
+  status: z.enum(['active', 'waiting', 'someday', 'done', 'proposed']),
+  waitingOn: z.string().optional(),
+  waitingSince: z.string().nullable().optional(),
+  notebookPages: z.array(z.string()).optional(),
+  existingTaskIds: z.array(z.string().uuid()).optional(),
+  newTasks: z.array(importNewTaskSchema).optional(),
+  nextAction: importNextActionSchema.nullable().optional(),
+});
+
 const stagedImportPayloadSchema = z.object({
-  projects: z.array(ImportProjectSchema),
+  projects: z.array(importProjectSchema),
 });
 
 const ImportRowSchema = z.object({

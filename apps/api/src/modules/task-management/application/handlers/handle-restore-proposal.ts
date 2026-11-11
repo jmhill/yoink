@@ -1,5 +1,6 @@
+import type { Project } from '../../domain/model/project-document.js';
 import { errAsync, type ResultAsync } from 'neverthrow';
-import type { Project } from '@yoink/api-contracts';
+
 import type { ChangeLogKind } from '../../../history/domain/kinds.js';
 import type { RestoreDeclinedProjectCommand } from '../../domain/messages/project-commands.js';
 import { projectNotFoundError, type RestoreDeclinedProjectError } from '../../domain/messages/project-errors.js';

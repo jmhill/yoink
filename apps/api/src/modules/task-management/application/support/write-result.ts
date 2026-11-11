@@ -1,4 +1,4 @@
-import type { Task } from '@yoink/api-contracts';
+import type { Task } from '../../domain/model/task.js';
 import type { ChangeLogKind } from '../../../history/domain/kinds.js';
 import type { ChangeLogRecord } from '../../../history/domain/record.js';
 import type { TaskEvent } from '../../domain/messages/task-events.js';

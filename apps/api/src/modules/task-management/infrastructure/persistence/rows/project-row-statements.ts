@@ -1,4 +1,4 @@
-import type { Project } from '@yoink/api-contracts';
+import type { Project } from '../../../domain/model/project-document.js';
 import type { SqlQuery } from '../../../../history/infrastructure/sql.js';
 
 export const insertProjectQuery = (project: Project): SqlQuery => ({

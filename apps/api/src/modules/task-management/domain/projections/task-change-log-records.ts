@@ -1,4 +1,4 @@
-import type { Task } from '@yoink/api-contracts';
+import type { Task } from '../model/task.js';
 import type { Actor } from '../../../../kernel/auth-context.js';
 import {
   UNLISTED_PILE_SUBJECT_ID,

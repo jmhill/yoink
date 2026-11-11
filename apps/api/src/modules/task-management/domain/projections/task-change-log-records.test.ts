@@ -1,3 +1,4 @@
+import type { Task } from '../model/task.js';
 import { describe, it, expect } from 'vitest';
 import { parseChangeLogRecord } from '../../../history/domain/parse-record.js';
 import { UNLISTED_PILE_SUBJECT_ID } from '../../../history/domain/kinds.js';
@@ -6,7 +7,6 @@ import {
   changeLogRecordsFromTaskEvent,
   projectMembershipChange,
 } from './task-change-log-records.js';
-import type { Task } from '@yoink/api-contracts';
 
 const current: Task = {
   id: 'task-1',

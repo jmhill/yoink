@@ -1,5 +1,6 @@
+import type { Task } from '../../domain/model/task.js';
 import type { ResultAsync } from 'neverthrow';
-import type { Task } from '@yoink/api-contracts';
+
 import type { ListUnlistedOpenTasksQuery } from '../../domain/messages/list-queries.js';
 import type { ListUnlistedOpenTasksError } from '../../domain/messages/list-errors.js';
 import { resolveListLimit } from '../../../../kernel/listing/domain/list-kind.js';

@@ -1,5 +1,6 @@
+import type { Task } from '../model/task.js';
 import { err, ok, type Result } from 'neverthrow';
-import type { Task } from '@yoink/api-contracts';
+
 import { decideCompleteTask } from '../decisions/decide-complete.js';
 import { decideUpdateTask } from '../decisions/decide-update-task.js';
 import { changeLogIdsForTaskUpdated } from './task-change-log-records.js';

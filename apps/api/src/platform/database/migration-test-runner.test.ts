@@ -133,6 +133,58 @@ describe('Migration test runner', () => {
       expect(result.testedMigrations).toEqual(['create_orgs', 'create_users']);
     });
 
+    it('fails the old pragma-then-batch rebuild when a child references the parent', async () => {
+      const createParent: Migration = {
+        version: 1,
+        name: 'create_parent',
+        up: async (database) => {
+          await database.execute({
+            sql: 'CREATE TABLE parents (id TEXT PRIMARY KEY, name TEXT)',
+          });
+          await database.execute({
+            sql: 'CREATE TABLE children (id TEXT PRIMARY KEY, parent_id TEXT NOT NULL REFERENCES parents(id))',
+          });
+        },
+      };
+      const oldRebuild: Migration = {
+        version: 2,
+        name: 'rebuild_parents_old_path',
+        up: async (database) => {
+          await database.execute({ sql: 'PRAGMA foreign_keys = OFF' });
+          await database.batch(
+            [
+              { sql: 'CREATE TABLE parents_new (id TEXT PRIMARY KEY, name TEXT NOT NULL)' },
+              { sql: 'INSERT INTO parents_new SELECT id, name FROM parents' },
+              { sql: 'DROP TABLE parents' },
+              { sql: 'ALTER TABLE parents_new RENAME TO parents' },
+            ],
+            'write'
+          );
+        },
+      };
+
+      await runMigrations(productionDb, [createParent]);
+
+      const result = await testPendingMigrations({
+        productionDb,
+        localDbPath: testDbPath,
+        allMigrations: [createParent, oldRebuild],
+        seed: async (database) => {
+          await database.execute({ sql: 'PRAGMA foreign_keys = ON' });
+          await database.execute({
+            sql: `INSERT INTO parents (id, name) VALUES ('p1', 'Acme')`,
+          });
+          await database.execute({
+            sql: `INSERT INTO children (id, parent_id) VALUES ('c1', 'p1')`,
+          });
+        },
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('rebuild_parents_old_path');
+      expect(result.error).toContain('FOREIGN KEY constraint failed');
+    });
+
     it('creates local database file', async () => {
       await runMigrations(productionDb, [migration1]);
 

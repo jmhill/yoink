@@ -477,7 +477,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M5.8 Notes settings table and the mirror-bot column
 
-**Execution:** `M5.8a` create, `M5.8b` backfill, `M5.8c` switch (keep today's environment fallback), `M5.8d` drop in a later release. [#254](https://github.com/jmhill/yoink/issues/254), [#255](https://github.com/jmhill/yoink/issues/255), [#256](https://github.com/jmhill/yoink/issues/256), [#257](https://github.com/jmhill/yoink/issues/257). `M5.8a` ([#254](https://github.com/jmhill/yoink/issues/254)) is Done (#380, `d057cb15`, Trunk 42878712223). `M5.8b` ([#255](https://github.com/jmhill/yoink/issues/255)) is Done (#382, `5259f75f`, Trunk 42932612111). #255 is closed. `M5.8c` is In review. `M5.8d` is not.
+**Execution:** `M5.8a` create, `M5.8b` backfill, `M5.8c` switch (keep today's environment fallback), `M5.8d` drop in a later release. [#254](https://github.com/jmhill/yoink/issues/254), [#255](https://github.com/jmhill/yoink/issues/255), [#256](https://github.com/jmhill/yoink/issues/256), [#257](https://github.com/jmhill/yoink/issues/257). `M5.8a` ([#254](https://github.com/jmhill/yoink/issues/254)) is Done (#380, `d057cb15`, Trunk 42878712223). `M5.8b` ([#255](https://github.com/jmhill/yoink/issues/255)) is Done (#382, `5259f75f`, Trunk 42932612111). #255 is closed. `M5.8c` is Done (#389, `0ba8258b`, Trunk 42965731396). #256 is closed. `M5.8d` is Gated.
 
 - **Depends on:** M5.7
 - **Do:** expand/migrate/contract, one step per commit:
@@ -489,7 +489,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M5.9 Remove `project_notes.project_id → projects` foreign key
 
-**Execution:** `M5.9` ([#258](https://github.com/jmhill/yoink/issues/258)) is Done (#384, `166a1201`, Trunk 42939409979). #258 is closed.
+**Execution:** `M5.9` ([#258](https://github.com/jmhill/yoink/issues/258)) is Done ([#384](https://github.com/jmhill/yoink/pull/384), `166a1201`, Trunk [42939409979](https://github.com/jmhill/yoink/actions/runs/42939409979)). #258 is closed.
 
 - **Depends on:** M5.7
 - **Do:** a notes-owned migration rebuilding `project_notes` without the constraint. Deleting a project (if possible) or changing its status no longer depends on notes rows.
@@ -497,8 +497,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M5.10 Review and history (queries)
 
-**Execution:** `M5.10-review` and `M5.10-history`. `CL-REVIEW` is done: Justin adopted option 1 on 2026-11-09 at 10:43am CST ([#244](https://github.com/jmhill/yoink/issues/244#issuecomment-6745725813)). `M5.10-review` ([#259](https://github.com/jmhill/yoink/issues/259)) is Done (#379, `ea48d512`, Trunk 42895657418). `M5.10-history` ([#260](https://github.com/jmhill/yoink/issues/260)) is Done (#385, `a86c16e5`, Trunk 42945745666). #260 is closed. [#244](https://github.com/jmhill/yoink/issues/244).
-
+**Execution:** `M5.10-review` and `M5.10-history`. `CL-REVIEW` is done: Justin adopted option 1 on 2026-11-09 at 10:43am CST ([#244](https://github.com/jmhill/yoink/issues/244#issuecomment-6745725813)). `M5.10-review` ([#259](https://github.com/jmhill/yoink/issues/259)) is Done (#379, `ea48d512`, Trunk 42895657418). `M5.10-history` ([#260](https://github.com/jmhill/yoink/issues/260)) is Done ([#385](https://github.com/jmhill/yoink/pull/385), `a86c16e5`, Trunk [42945745666](https://github.com/jmhill/yoink/actions/runs/42945745666)). #260 is closed. [#244](https://github.com/jmhill/yoink/issues/244).
 - **Depends on:** M5.3, M4.3
 - **Do:**
   - **Review** gets the standard checklist. Review owns the attention policy: classification, section order, and queries. It consumes Task Management, history, and access ports. Task Management exposes project, next-action, and completed-task facts in its own terms, not a query shaped as what Review needs. History supplies last-change facts. Access supplies the organization time zone. The web `/projects` screen and public `GET /review`, `GET /review/done`, and the `/api` aliases share one Review query. There is no cross-module SQL, and no new Review table just to establish ownership. The attention keyset stays. The done-list keyset stays `(completedAt, task id)`. Edges never re-sort a paginated result. The review fixture routes stay in `edges/test-fixtures/` (see M7.4).
@@ -522,7 +521,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M5.12 Access: interface, unit of work, signup atomicity (absorbs 8.5.6)
 
-**Execution:** `M5.12`. [#267](https://github.com/jmhill/yoink/issues/267). Done on main (`bf10fb6d2fda5c92f39da769e61b9871aa50ad7f`, [#342](https://github.com/jmhill/yoink/pull/342)). Replacing the M5.3, M5.7, and M5.10 interim adapters is deferred until those tasks exist. It was a no-op here.
+**Execution:** `M5.12`. [#267](https://github.com/jmhill/yoink/issues/267). Done on main (`bf10fb6d2fda5c92f39da769e61b9871aa50ad7f`, [#342](https://github.com/jmhill/yoink/pull/342)). Replacing the interim adapters is `M5.12b`.
 
 - **Depends on:** M4.3, M3.5
 - **Do:**
@@ -530,8 +529,16 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
   - Publish queries for other modules and edges: authenticate token, authenticate session, organization time zone, principal exists in organization, user display names.
   - Signup (user + organization + memberships + passkey + session) commits as **one** unit-of-work batch, replacing 8.5.6's `UserIdentityStore` idea.
   - Merge the duplicated error factories in `admin-errors.ts` (from 8.5.4).
-  - Replacing the interim access adapters from M5.3, M5.7, and M5.10 is deferred until those tasks exist. It was a no-op here.
 - **Accept:** standard checklist complete. Signup has an atomicity test (a failure in the last step leaves no rows behind). Signup creates the user with one guarded insert in that same batch (`INSERT … SELECT … WHERE NOT EXISTS`, or the equivalent guard). A unique-email race, the email already taken, is `Conflict` for the access module. It is not a thrown constraint and not HTTP 500. `edges/_shared/auth` uses access's interface.
+
+### M5.12b Replace interim access adapters
+
+**Execution:** `M5.12b`. [#388](https://github.com/jmhill/yoink/issues/388).
+
+- **Depends on:** M5.3, M5.7, M5.10-review, M5.12
+- **Blocks:** M5.11-access ([#266](https://github.com/jmhill/yoink/issues/266)), M7.5
+- **Do:** find every interim access adapter from M5.3, M5.7, and M5.10, and any other adapter of the same kind. Replace each with an adapter over access's published queries. No cross-module SQL. Remove allowlist and lint exemptions that exist only for those adapters. Keep the tests.
+- **Accept:** merged, and that merge commit's Trunk run (deploy and post-deploy smoke) passes.
 
 ### M5.13 Access: migrate legacy services (closes 8.5.4)
 
@@ -607,10 +614,10 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M6.5 Remove client-only legacy routes
 
-**Execution:** `M6.5-web` and `M6.5-admin`. Unknown window lengths stay gates. [#291](https://github.com/jmhill/yoink/issues/291), [#292](https://github.com/jmhill/yoink/issues/292).
+**Execution:** `M6.5-web` ([#291](https://github.com/jmhill/yoink/issues/291)) and `M6.5-admin` ([#292](https://github.com/jmhill/yoink/issues/292)) are Gated. The gate is in the execution index.
 
 - **Depends on:** M6.3 (web) and M6.4 (admin), each removing its own group
-- **Do:** delete each `edges/legacy/<area>` once the inventory shows no callers, and once the web edge's expand/contract window has passed (ADR §8.2: no requests from builds that use them for a set number of days, based on `X-Yoink-Build` logs).
+- **Do:** delete each `edges/legacy/<area>` once the inventory shows no callers, and once the expand/contract window has passed (ADR §8.2: 14 days of production logs with no requests from `X-Yoink-Build` values that use the legacy routes). Justin set that on 2026-11-10 at 8:12pm CT, as recorded in [#291](https://github.com/jmhill/yoink/issues/291) and [#292](https://github.com/jmhill/yoink/issues/292). Admin uses the same 14 days until Justin shortens it.
 - **Accept:** `edges/legacy/` is gone.
 
 ### M6.6 Remove `/api/admin/...` from the dev proxy and docs
@@ -635,7 +642,7 @@ Own types (dropping `@yoink/api-contracts` from domain and application) are a **
 
 ### M7.2 Remove the `/api` alias
 
-**Execution:** `M7.2`. [#295](https://github.com/jmhill/yoink/issues/295).
+**Execution:** `M7.2` ([#295](https://github.com/jmhill/yoink/issues/295)) is Gated. The gate is in the execution index.
 
 - **Depends on:** M7.1 plus the conditions in ADR §9: the sunset date has passed, the alias has seen no calls for 30 days, and any remaining token owners have been contacted
 - **Do:** unmount the alias. Keep `/api/health` and `/api/v1`.
@@ -723,7 +730,7 @@ M0.1  M0.2  M0.3  M0.4  M0.5
    M7.1 ── M7.2 ── M7.3 (after PLAN 7.7c)      M7.4      M7.5 ── M7.6, M7.7
 ```
 
-M4.4 runs after every M5 task that removes callers of history's cross-module guards.
+M4.4 runs after every M5 task that removes callers of history's cross-module guards. `M5.12b` follows `M5.3`, `M5.7`, `M5.10-review`, and `M5.12`, and blocks `M5.11-access` and `M7.5`.
 
 ## Execution mandate
 
@@ -735,7 +742,7 @@ One bounded task per coder. Serialize edits to `composition-root.ts`, `app.ts`, 
 
 Notes mirror-bot resolution keeps today's order: stored designation on `notes_settings`, then `NOTES_MIRROR_BOT_USER_ID`, then the first agent named `NOTES_MIRROR_BOT_NAME`. Do not drop the environment fallback. The organizations column is not read.
 
-Unknown retirement lengths stay recorded gates. ADR §8.2's "a set number of days", and admin's shorter window, are unset. Do not invent a number or remove routes early.
+`M6.5-web` and `M6.5-admin` each stay gated until production logs show no requests from `X-Yoink-Build` values that still use the legacy routes, for at least 14 days, and until Justin approves that issue. Justin set that window on 2026-11-10 at 8:12pm CT, as recorded in [#291](https://github.com/jmhill/yoink/issues/291) and [#292](https://github.com/jmhill/yoink/issues/292). Admin may later be shortened only by Justin. `M7.2` stays gated on the ADR §9 conditions and on Justin's approval of that issue. `M5.8d` stays gated until `M5.8c` is in production, production shows the old column is no longer read or written, and Justin approves that issue. Green CI is not enough for any of those. Do not remove the routes or the column early.
 
 Docs-only tasks and unmerged spikes follow the issue's Tests section. When that section says `pnpm quality` is not required, it is not a gate and must not be claimed. That covers `M0.2`, `M0.3`, `M0.4`, `M0.5`, `CL-WORK`, `CL-REVIEW`, and `M7.7`. PR CI ignores `docs/**` and `*.md`. Code tasks still follow the Definition of done above.
 
@@ -753,7 +760,7 @@ M0.2 has no GitHub issue. The technical spike is complete. The obsolete waiting-
 
 `CL-WORK` (#243) and `CL-REVIEW` (#244) are done. Justin adopted option 1 for both on 2026-11-09 at 10:43am CST ([#243](https://github.com/jmhill/yoink/issues/243#issuecomment-6745725026), [#244](https://github.com/jmhill/yoink/issues/244#issuecomment-6745725813)). `TOKEN-LIST` (#327) is done ([#340](https://github.com/jmhill/yoink/pull/340), `dc7da8044357eda0887f9a9fc7e86acb002b3a58`). [#327](https://github.com/jmhill/yoink/issues/327) is closed.
 
-The logical dependencies plus the serialization edges were checked together. There is no cycle. `M0.3` serializes after `M0.2` only. They are not mutual. `M4.1b` depends on `M4.1` and is a dependency of `M5.1`, `M5.3`, and `M5.5`. `M4.4` depends on `M5.3`, `M5.5`, and `M5.7`, and nothing in M5 depends on `M4.4` except through `M7.5`. `M3.7` depends on completed `M1.2` and is a dependency of `M7.5`. `OPENAPI-V1` depends on `M3.2` and is a dependency of `M7.1`, because announcing the alias sunset directs people to `/api/v1`. `M5.11-access` depends on `M5.13-user`. The access-service chain does not depend on `M5.11-access`.
+The logical dependencies plus the serialization edges were checked together. There is no cycle. `M0.3` serializes after `M0.2` only. They are not mutual. `M4.1b` depends on `M4.1` and is a dependency of `M5.1`, `M5.3`, and `M5.5`. `M4.4` depends on `M5.3`, `M5.5`, and `M5.7`, and nothing in M5 depends on `M4.4` except through `M7.5`. `M3.7` depends on completed `M1.2` and is a dependency of `M7.5`. `OPENAPI-V1` depends on `M3.2` and is a dependency of `M7.1`, because announcing the alias sunset directs people to `/api/v1`. `M5.12b` depends on `M5.3`, `M5.7`, `M5.10-review`, and `M5.12`. `M5.11-access` depends on `M5.13-user` and `M5.12b`. `M7.5` depends on `M5.12b`. The access-service chain does not depend on `M5.11-access`.
 
 `M2.3` has no downstream issue. That note is not a new dependency. `M6.6`, `M7.3`, `M7.4`, `M7.6`, `M7.7`, `TOKEN-LIST`, and `LINT-ACCEPTANCE` are leaves. `LINT-ACCEPTANCE` puts this package's lint in quality and leaves the browser suite in the E2E job. It does not rewrite the ESLint baseline.
 
@@ -797,8 +804,8 @@ The logical dependencies plus the serialization edges were checked together. The
 | `M5.7` | `M5.3` | — | Done (#376, `4ae674c1`, Trunk 42854951002). | Notes live in `modules/notes/`. Create, update, delete, and import commit one notes plan. History writes the timeline from the integration event. Notes SQL names `project_notes`, plus the allowlisted `organizations` mirror-bot read and write until M5.8c. Allowlist 23 to 17. API lint is 10 (`boundaries/element-types`). Web stays 32. The baselines are allowlist 17, API lint 10, and web 32. `app.ts` and `composition-root.ts` changed. | [#253](https://github.com/jmhill/yoink/issues/253) |
 | `M5.8a` | `M5.7`, `M1.3` | — | Done (#380, `d057cb15`, Trunk 42878712223). | Notes-owned migration 045 creates empty `notes_settings`: organization id, and the designated mirror-bot user id as an opaque column. The organization foreign key is the identity anchor. The old `organizations.notes_mirror_bot_user_id` column stays the source of truth. No reader or writer switch. `app.ts` and `composition-root.ts` are unchanged. Allowlist stays 17. API lint stays 10. Web stays 32. | [#254](https://github.com/jmhill/yoink/issues/254) |
 | `M5.8b` | `M5.8a` | — | Done (#382, `5259f75f`, Trunk 42932612111). #255 is closed. | Platform migration 046 copies non-null `organizations.notes_mirror_bot_user_id` into `notes_settings`. A null organization gets no row. The old column stays the source of truth. No reader or writer switch. `app.ts` and `composition-root.ts` are unchanged. Allowlist stays 6. API lint stays 5. Web stays 32. 047 is Done on main ([#383](https://github.com/jmhill/yoink/pull/383), `4a583b08`; [#387](https://github.com/jmhill/yoink/pull/387), `6bb9291e`). This stays 046. | [#255](https://github.com/jmhill/yoink/issues/255) |
-| `M5.8c` | `M5.8b` | — | In review. | Reads and writes `notes_settings`. Order stays stored id, then `NOTES_MIRROR_BOT_USER_ID` (no write), then the named agent. A stored id is not replaced. The organizations column stays until M5.8d and is not read. Allowlist 2 to 0. API lint stays 5. Web stays 32. `app.ts` and `composition-root.ts` do not change. | [#256](https://github.com/jmhill/yoink/issues/256) |
-| `M5.8d` | `M5.8c` | — | Not started | Release gate. Drop the column only after M5.8c is in production. Confirm before that PR. | [#257](https://github.com/jmhill/yoink/issues/257) |
+| `M5.8c` | `M5.8b` | — | Done (#389, `0ba8258b`, Trunk 42965731396). #256 is closed. | Reads and writes `notes_settings`. Order stays stored id, then `NOTES_MIRROR_BOT_USER_ID` (no write), then the named agent. A stored id is not replaced. The organizations column stays until M5.8d and is not read. Allowlist 2 to 0. API lint stays 5. Web stays 32. `app.ts` and `composition-root.ts` do not change. | [#256](https://github.com/jmhill/yoink/issues/256) |
+| `M5.8d` | `M5.8c` | — | Gated | (a) `M5.8c` is in production and production shows `organizations.notes_mirror_bot_user_id` is no longer read or written. (b) Justin's explicit approval on #257. Green CI is not enough. | [#257](https://github.com/jmhill/yoink/issues/257) |
 | `M5.9` | `M5.7` | — | Done (#384, `166a1201`, Trunk 42939409979). #258 is closed. | Notes-owned migration 048 rebuilds `project_notes` without `FOREIGN KEY (project_id) REFERENCES projects(id)`. `project_id` stays an opaque column. Existing rows stay. Both notes indexes stay. Organization and user foreign keys stay identity anchors. No reader or writer switch. `rebuildTable` uses `Database.migrate`. No checked-in table references `project_notes`. `app.ts` and `composition-root.ts` are unchanged. Allowlist stays 6. API lint stays 5. Web stays 32. 046 is Done ([#382](https://github.com/jmhill/yoink/pull/382), `5259f75f`, Trunk 42932612111). #255 is closed. 047 is Done ([#383](https://github.com/jmhill/yoink/pull/383), `4a583b08`; [#387](https://github.com/jmhill/yoink/pull/387), `6bb9291e`). This stays 048. | [#258](https://github.com/jmhill/yoink/issues/258) |
 | `M5.10-review` | `M5.3`, `M4.3`, `CL-REVIEW` | — | Done (#379, `ea48d512`, Trunk 42895657418). | `CL-REVIEW` is decided ([#244](https://github.com/jmhill/yoink/issues/244#issuecomment-6745725813)). Review owns the attention policy. It reads Task Management projects and finished tasks, history's latest project change, and access's organization time zone. The web `/projects` screen and public `GET /review`, `GET /review/done`, and the `/api` aliases share that query. No cross-module SQL. The attention keyset stays. The done-list keyset stays `(completedAt, task id)`. Edges never re-sort a paginated result. Allowlist 17 to 11. API lint 10 to 5. Web stays 32. | [#259](https://github.com/jmhill/yoink/issues/259) |
 | `M5.10-history` | `M5.3`, `M4.3`, `M5.7` | — | Done (#385, `a86c16e5`, Trunk 42945745666). #260 is closed. | Task, project, note, and user names come through history ports. Task Management returns task id, title, and deleted, and project id and name. Notes returns note id, title, and deleted. Access returns the stored name, or the email when the name is null. A missing subject stays a null title and not deleted. A missing actor stays Unknown. History does not select those four tables. Allowlist 6 to 2. API lint stays 5. Web stays 32. `app.ts` does not change. The composition root adapts the ports. | [#260](https://github.com/jmhill/yoink/issues/260) |
@@ -807,8 +814,9 @@ The logical dependencies plus the serialization edges were checked together. The
 | `M5.11-notes` | `M5.7` | — | Not started | None. | [#263](https://github.com/jmhill/yoink/issues/263) |
 | `M5.11-review` | `M5.10-review` | — | Not started | None. | [#264](https://github.com/jmhill/yoink/issues/264) |
 | `M5.11-history` | `M5.10-history` | — | Not started | None. | [#265](https://github.com/jmhill/yoink/issues/265) |
-| `M5.11-access` | `M5.13-user` | — | Not started | None. | [#266](https://github.com/jmhill/yoink/issues/266) |
-| `M5.12` | `M4.3`, `M3.5` | — | Done ([#342](https://github.com/jmhill/yoink/pull/342), `bf10fb6d2fda5c92f39da769e61b9871aa50ad7f`). | Known issue [#354](https://github.com/jmhill/yoink/issues/354): Trunk [42629355792](https://github.com/jmhill/yoink/actions/runs/42629355792) stopped responding mid-E2E. The next Trunk, [42647342791](https://github.com/jmhill/yoink/actions/runs/42647342791) on `72780cac`, passed. Signup's create-user is one guarded insert in the batch. A unique-email race is `Conflict`, not HTTP 500. Replacing the M5.3, M5.7, and M5.10 interim adapters is deferred until those tasks exist. It was a no-op here. | [#267](https://github.com/jmhill/yoink/issues/267) |
+| `M5.11-access` | `M5.13-user`, `M5.12b` | — | Not started | None. | [#266](https://github.com/jmhill/yoink/issues/266) |
+| `M5.12` | `M4.3`, `M3.5` | — | Done ([#342](https://github.com/jmhill/yoink/pull/342), `bf10fb6d2fda5c92f39da769e61b9871aa50ad7f`). | Known issue [#354](https://github.com/jmhill/yoink/issues/354): Trunk [42629355792](https://github.com/jmhill/yoink/actions/runs/42629355792) stopped responding mid-E2E. The next Trunk, [42647342791](https://github.com/jmhill/yoink/actions/runs/42647342791) on `72780cac`, passed. Signup's create-user is one guarded insert in the batch. A unique-email race is `Conflict`, not HTTP 500. The interim adapters are `M5.12b`. | [#267](https://github.com/jmhill/yoink/issues/267) |
+| `M5.12b` | `M5.3`, `M5.7`, `M5.10-review`, `M5.12` | — | Not started | None. Blocks `M5.11-access` and `M7.5`. | [#388](https://github.com/jmhill/yoink/issues/388) |
 | `M5.13-admin` | `M5.12` | — | Done ([#345](https://github.com/jmhill/yoink/pull/345), `e8383e626c81de47e16ad352932254f2c9bd2bc1`). [#268](https://github.com/jmhill/yoink/issues/268) closed completed. | None. `createAdminService` decides, then commits an access plan. The composition root passes the sqlite `unitOfWork` into `createAdminService`, so those plans commit through the access participant. | [#268](https://github.com/jmhill/yoink/issues/268) |
 | `M5.13-admin-session` | `M5.12` | `M5.13-admin` | Done (#357, `b66c9614`, Trunk 42716066202). | None. | [#269](https://github.com/jmhill/yoink/issues/269) |
 | `M5.13-agent` | `M5.12` | `M5.13-admin-session` | Done (#360, `c60f9ad7`, Trunk 42746581115). | None. `createAgentService` decides from the mint command and the membership and organization queries, then commits one access plan. The composition root passes the sqlite `unitOfWork` into `createAgentService`. | [#270](https://github.com/jmhill/yoink/issues/270) |
@@ -832,13 +840,13 @@ The logical dependencies plus the serialization edges were checked together. The
 | `M6.3-settings` | `M6.2`, `M5.12` | — | Done (#362, `44626fc7`, Trunk 42751521944). | None. | [#288](https://github.com/jmhill/yoink/issues/288) |
 | `M6.3-auth` | `M6.2`, `M5.12` | `M6.3-settings` | Done (#364, `d4fb4c44`, Trunk 42762337377). | None. Login, signup, session, logout, passkeys, and join validate/accept are on `/web-api`. Combined auth stays. `apps/web/src/lib/token.ts` stays. `GET /auth/tokens` stays token-only on `/api/v1` and the `/api` alias. Legacy routes stay. `app.ts` passes the existing signup handlers into `registerWebApi`. `composition-root.ts` is unchanged. | [#289](https://github.com/jmhill/yoink/issues/289) |
 | `M6.4` | `M5.12` | — | Done (#359, `07fd98d3`, Trunk [42739846940](https://github.com/jmhill/yoink/actions/runs/42739846940)). | None. | [#290](https://github.com/jmhill/yoink/issues/290) |
-| `M6.5-web` | `M6.3-process`, `M6.3-tasks-lists`, `M6.3-work`, `M6.3-project-page`, `M6.3-notes`, `M6.3-review`, `M6.3-history`, `M6.3-settings`, `M6.3-auth` | — | Not started | Justin sets the day count. Logs must be quiet for that many days. Do not guess. | [#291](https://github.com/jmhill/yoink/issues/291) |
-| `M6.5-admin` | `M6.4` | — | Not started | Justin sets the shorter admin window. Do not guess. | [#292](https://github.com/jmhill/yoink/issues/292) |
+| `M6.5-web` | `M6.3-process`, `M6.3-tasks-lists`, `M6.3-work`, `M6.3-project-page`, `M6.3-notes`, `M6.3-review`, `M6.3-history`, `M6.3-settings`, `M6.3-auth` | — | Gated | (a) Production logs show no requests from `X-Yoink-Build` values that use the legacy web routes, for at least 14 days. Justin set that window on 2026-11-10 at 8:12pm CT, as recorded in [#291](https://github.com/jmhill/yoink/issues/291) and [#292](https://github.com/jmhill/yoink/issues/292). (b) Justin's explicit approval on #291. Green CI is not enough. | [#291](https://github.com/jmhill/yoink/issues/291) |
+| `M6.5-admin` | `M6.4` | — | Gated | (a) Production logs show no requests from `X-Yoink-Build` values that use the legacy admin routes, for at least 14 days. Justin set that window on 2026-11-10 at 8:12pm CT, as recorded in [#291](https://github.com/jmhill/yoink/issues/291) and [#292](https://github.com/jmhill/yoink/issues/292). Admin may later be shortened only by Justin. (b) Justin's explicit approval on #292. Green CI is not enough. | [#292](https://github.com/jmhill/yoink/issues/292) |
 | `M6.6` | `M6.4`, `M6.5-admin` | — | Not started | None. | [#293](https://github.com/jmhill/yoink/issues/293) |
 | `M7.1` | `OPENAPI-V1`, `M6.1`, `M6.3-process`, `M6.3-tasks-lists`, `M6.3-work`, `M6.3-project-page`, `M6.3-notes`, `M6.3-review`, `M6.3-history`, `M6.3-settings`, `M6.3-auth`, `M6.4` | — | Not started | Justin chooses the Sunset date, at least 90 days out, before headers advertise it. No outreach. OPENAPI-V1 is done ([#334](https://github.com/jmhill/yoink/pull/334), `30f08e333c45e7e7292955fa877c702fbef6374a`). | [#294](https://github.com/jmhill/yoink/issues/294) |
-| `M7.2` | `M7.1` | — | Not started | Sunset has passed, 30 days with no alias calls, and a person has contacted any remaining token owner. Do not send outreach. | [#295](https://github.com/jmhill/yoink/issues/295) |
+| `M7.2` | `M7.1` | — | Gated | (a) ADR §9: the sunset date has passed, the alias has had no calls for 30 days, and any remaining token owner has been contacted. (b) Justin's explicit approval on #295. Green CI is not enough. | [#295](https://github.com/jmhill/yoink/issues/295) |
 | `M7.3` | `M7.2` | — | Not started | External gate: PLAN 7.7c is done, plus M7.2. Do not perform 7.7c here. | [#296](https://github.com/jmhill/yoink/issues/296) |
 | `M7.4` | `M5.10-review`, `M5.12` | — | Not started | Stop if replacing a fixture needs a new product command. | [#297](https://github.com/jmhill/yoink/issues/297) |
-| `M7.5` | `M3.7`, `M4.4`, `M5.6`, `M5.8d`, `M5.9`, `M5.11-captures`, `M5.11-task-management`, `M5.11-notes`, `M5.11-review`, `M5.11-history`, `M5.11-access`, `M6.5-web`, `M6.5-admin` | — | Not started | None. M3.7 already removed the test-helper rows. | [#298](https://github.com/jmhill/yoink/issues/298) |
+| `M7.5` | `M3.7`, `M4.4`, `M5.6`, `M5.8d`, `M5.9`, `M5.11-captures`, `M5.11-task-management`, `M5.11-notes`, `M5.11-review`, `M5.11-history`, `M5.11-access`, `M5.12b`, `M6.5-web`, `M6.5-admin` | — | Not started | None. M3.7 already removed the test-helper rows. | [#298](https://github.com/jmhill/yoink/issues/298) |
 | `M7.6` | `M7.2`, `M6.5-web`, `M6.5-admin` | — | Not started | None. | [#299](https://github.com/jmhill/yoink/issues/299) |
 | `M7.7` | `M7.5` | — | Not started | Tycho reviews the grouped log before the status change. | [#300](https://github.com/jmhill/yoink/issues/300) |

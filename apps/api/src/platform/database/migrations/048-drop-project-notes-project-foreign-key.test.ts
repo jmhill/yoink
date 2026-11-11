@@ -3,7 +3,7 @@ import { createBareTestDatabase } from '../test-utils.js';
 import { runMigrations } from '../migrator.js';
 import { migrations } from './index.js';
 import { migration as dropProjectNotesProjectForeignKey } from './048-drop-project-notes-project-foreign-key.js';
-import type { Database, QueryResult } from '../types.js';
+import type { Database } from '../types.js';
 
 const before48 = migrations.filter((migration) => migration.version < 48);
 const at = '2026-11-10T00:00:00.000Z';
@@ -26,35 +26,6 @@ const noteRow = async (db: Database) => {
     args: ['note-1'],
   });
   return result.rows[0];
-};
-
-/**
- * Turso HTTP opens a new stream per request. `PRAGMA foreign_keys = OFF` on
- * one `execute` does not apply to the next `batch`, which begins with foreign
- * keys on. `migrate` is one stream: foreign keys off before `BEGIN`.
- */
-const tursoHttpDatabase = (inner: Database): Database => {
-  const ignored: QueryResult = { rows: [], rowsAffected: 0 };
-  return {
-    execute: (query) => {
-      if (/PRAGMA\s+foreign_keys\s*=\s*OFF/i.test(query.sql)) {
-        return Promise.resolve(ignored);
-      }
-      return inner.execute(query);
-    },
-    batch: async (queries, mode) => {
-      await inner.execute({ sql: 'PRAGMA foreign_keys = ON' });
-      return inner.batch(queries, mode);
-    },
-    migrate: (queries) => {
-      const migrate = inner.migrate;
-      if (migrate === undefined) {
-        throw new Error('expected migrate');
-      }
-      return migrate(queries);
-    },
-    close: () => inner.close(),
-  };
 };
 
 const seedNoteOnProject = async (db: Database): Promise<void> => {
@@ -197,7 +168,9 @@ describe('Migration 48: drop project_notes.project_id foreign key', () => {
     });
     const before = await noteRow(db);
 
-    await dropProjectNotesProjectForeignKey.up(tursoHttpDatabase(db));
+    // createBareTestDatabase is the Turso-like wrapper: a standalone
+    // foreign_keys OFF pragma does not reach batch.
+    await dropProjectNotesProjectForeignKey.up(db);
 
     expect(await noteRow(db)).toEqual(before);
     expect(await foreignKeyTables(db)).toEqual(['organizations', 'users', 'users']);

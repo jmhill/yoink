@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { rebuildTable } from './table-rebuild.js';
 import { createBareTestDatabase, type Database } from './test-utils.js';
-import type { QueryResult } from './types.js';
 
 describe('rebuildTable', () => {
   let db: Database;
@@ -281,103 +280,117 @@ describe('rebuildTable', () => {
     expect(rows[0]).toEqual({ id: '1', org_id: 'org-1', name: 'Alice' });
   });
 
-  it('rebuilds a parent while a child row references it, even when a prior foreign_keys pragma does not stick', async () => {
-    const inner = createBareTestDatabase();
-    await inner.execute({ sql: 'PRAGMA foreign_keys = ON' });
-    await inner.execute({
+  it('rebuilds a parent while a child row references it on the default Turso-like database', async () => {
+    await db.execute({ sql: 'PRAGMA foreign_keys = ON' });
+    await db.execute({
       sql: 'CREATE TABLE parents (id TEXT PRIMARY KEY, name TEXT)',
     });
-    await inner.execute({
+    await db.execute({
       sql: 'CREATE TABLE children (id TEXT PRIMARY KEY, parent_id TEXT REFERENCES parents(id))',
     });
-    await inner.execute({
+    await db.execute({
       sql: `INSERT INTO parents (id, name) VALUES ('p1', 'Acme')`,
     });
-    await inner.execute({
+    await db.execute({
       sql: `INSERT INTO children (id, parent_id) VALUES ('c1', 'p1')`,
     });
 
-    const ignored: QueryResult = { rows: [], rowsAffected: 0 };
-    const remote: Database = {
-      execute: (query) => {
-        if (/PRAGMA\s+foreign_keys\s*=\s*OFF/i.test(query.sql)) {
-          return Promise.resolve(ignored);
-        }
-        return inner.execute(query);
-      },
-      batch: async (queries, mode) => {
-        await inner.execute({ sql: 'PRAGMA foreign_keys = ON' });
-        return inner.batch(queries, mode);
-      },
-      migrate: (queries) => {
-        const migrate = inner.migrate;
-        if (migrate === undefined) {
-          throw new Error('expected migrate');
-        }
-        return migrate(queries);
-      },
-      close: () => inner.close(),
-    };
-
-    try {
-      await rebuildTable(remote, {
-        tableName: 'parents',
-        newSchema: `
-          CREATE TABLE parents (
-            id TEXT PRIMARY KEY,
-            name TEXT NOT NULL
-          )
-        `,
-        columnMapping: 'SELECT id, name',
-      });
-
-      const check = await inner.execute({ sql: 'PRAGMA foreign_key_check' });
-      expect(check.rows).toEqual([]);
-      const child = await inner.execute({ sql: 'SELECT parent_id FROM children' });
-      expect(child.rows[0]?.parent_id).toBe('p1');
-      const leftover = await inner.execute({
-        sql: `SELECT name FROM sqlite_master WHERE name IN ('parents_new', '_yoink_fk_guard')`,
-      });
-      expect(leftover.rows).toEqual([]);
-    } finally {
-      await remote.close();
-    }
-  });
-
-  it('rolls the rebuild back when foreign_key_check would not be clean', async () => {
-    await db.execute({ sql: 'PRAGMA foreign_keys = OFF' });
-    await db.execute({
-      sql: 'CREATE TABLE parents (id TEXT PRIMARY KEY, name TEXT)',
+    await rebuildTable(db, {
+      tableName: 'parents',
+      newSchema: `
+        CREATE TABLE parents (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL
+        )
+      `,
+      columnMapping: 'SELECT id, name',
     });
-    await db.execute({
-      sql: 'CREATE TABLE children (id TEXT PRIMARY KEY, parent_id TEXT REFERENCES parents(id))',
-    });
-    await db.execute({
-      sql: `INSERT INTO parents (id, name) VALUES ('p1', 'Acme')`,
-    });
-    await db.execute({
-      sql: `INSERT INTO children (id, parent_id) VALUES ('c1', 'missing')`,
-    });
-    await db.execute({ sql: 'PRAGMA foreign_keys = ON' });
 
-    await expect(
-      rebuildTable(db, {
-        tableName: 'parents',
-        newSchema: `
-          CREATE TABLE parents (
-            id TEXT PRIMARY KEY,
-            name TEXT NOT NULL
-          )
-        `,
-        columnMapping: 'SELECT id, name',
-      })
-    ).rejects.toThrow(/CHECK constraint failed/);
-
-    const parents = await db.execute({ sql: 'SELECT id, name FROM parents' });
-    expect(parents.rows).toEqual([{ id: 'p1', name: 'Acme' }]);
+    const check = await db.execute({ sql: 'PRAGMA foreign_key_check' });
+    expect(check.rows).toEqual([]);
+    const child = await db.execute({ sql: 'SELECT parent_id FROM children' });
+    expect(child.rows[0]?.parent_id).toBe('p1');
     const leftover = await db.execute({
       sql: `SELECT name FROM sqlite_master WHERE name IN ('parents_new', '_yoink_fk_guard')`,
     });
     expect(leftover.rows).toEqual([]);
+  });
+
+  it('rejects the old pragma-then-batch rebuild when a child references the parent', async () => {
+    await db.execute({ sql: 'PRAGMA foreign_keys = ON' });
+    await db.execute({
+      sql: 'CREATE TABLE parents (id TEXT PRIMARY KEY, name TEXT)',
+    });
+    await db.execute({
+      sql: 'CREATE TABLE children (id TEXT PRIMARY KEY, parent_id TEXT NOT NULL REFERENCES parents(id))',
+    });
+    await db.execute({
+      sql: `INSERT INTO parents (id, name) VALUES ('p1', 'Acme')`,
+    });
+    await db.execute({
+      sql: `INSERT INTO children (id, parent_id) VALUES ('c1', 'p1')`,
+    });
+
+    await db.execute({ sql: 'PRAGMA foreign_keys = OFF' });
+    await expect(
+      db.batch(
+        [
+          { sql: 'CREATE TABLE parents_new (id TEXT PRIMARY KEY, name TEXT NOT NULL)' },
+          { sql: 'INSERT INTO parents_new SELECT id, name FROM parents' },
+          { sql: 'DROP TABLE parents' },
+          { sql: 'ALTER TABLE parents_new RENAME TO parents' },
+        ],
+        'write'
+      )
+    ).rejects.toThrow(/FOREIGN KEY constraint failed/);
+
+    const child = await db.execute({ sql: 'SELECT parent_id FROM children' });
+    expect(child.rows).toEqual([{ parent_id: 'p1' }]);
+    const parents = await db.execute({ sql: 'SELECT id, name FROM parents' });
+    expect(parents.rows).toEqual([{ id: 'p1', name: 'Acme' }]);
+  });
+
+  it('rolls the rebuild back when foreign_key_check would not be clean', async () => {
+    // The row points at a missing parent. The default Turso-like database
+    // ignores PRAGMA foreign_keys=OFF, so that insert cannot land.
+    const raw = createBareTestDatabase({ tursoLike: false });
+    try {
+      await raw.execute({ sql: 'PRAGMA foreign_keys = OFF' });
+      await raw.execute({
+        sql: 'CREATE TABLE parents (id TEXT PRIMARY KEY, name TEXT)',
+      });
+      await raw.execute({
+        sql: 'CREATE TABLE children (id TEXT PRIMARY KEY, parent_id TEXT REFERENCES parents(id))',
+      });
+      await raw.execute({
+        sql: `INSERT INTO parents (id, name) VALUES ('p1', 'Acme')`,
+      });
+      await raw.execute({
+        sql: `INSERT INTO children (id, parent_id) VALUES ('c1', 'missing')`,
+      });
+      await raw.execute({ sql: 'PRAGMA foreign_keys = ON' });
+
+      await expect(
+        rebuildTable(raw, {
+          tableName: 'parents',
+          newSchema: `
+            CREATE TABLE parents (
+              id TEXT PRIMARY KEY,
+              name TEXT NOT NULL
+            )
+          `,
+          columnMapping: 'SELECT id, name',
+        })
+      ).rejects.toThrow(/CHECK constraint failed/);
+
+      const parents = await raw.execute({ sql: 'SELECT id, name FROM parents' });
+      expect(parents.rows).toEqual([{ id: 'p1', name: 'Acme' }]);
+      const leftover = await raw.execute({
+        sql: `SELECT name FROM sqlite_master WHERE name IN ('parents_new', '_yoink_fk_guard')`,
+      });
+      expect(leftover.rows).toEqual([]);
+    } finally {
+      await raw.close();
+    }
   });
 });

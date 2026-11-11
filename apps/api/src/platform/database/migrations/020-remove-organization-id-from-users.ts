@@ -8,10 +8,9 @@ import { rebuildTable } from '../table-rebuild.js';
  * User organization membership is now tracked in the organization_memberships
  * table, so the redundant organization_id column can be removed.
  *
- * Uses rebuildTable utility which:
- * - Disables FK constraints during the rebuild (prevents FK violation errors)
- * - Executes all steps atomically in a batch
- * - Re-enables FK constraints after completion
+ * Uses rebuildTable, which runs the drop through Database.migrate so foreign
+ * keys are off for that one request. A separate PRAGMA plus batch does not
+ * do that on Turso.
  */
 export const migration: Migration = {
   version: 20,

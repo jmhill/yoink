@@ -2,6 +2,7 @@ import { existsSync, rmSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { createDatabase } from './database.js';
 import { runMigrations } from './migrator.js';
+import { tursoLikeDatabase } from './turso-like-database.js';
 import { getLastDeployedVersion } from './turso-client.js';
 import type { Database, Migration } from './types.js';
 
@@ -34,6 +35,15 @@ export type TestMigrationOptions = {
    * so an early schema can still exercise the pending migration.
    */
   seed?: (db: Database) => Promise<unknown>;
+  /**
+   * Default true. The local database drops a standalone
+   * `PRAGMA foreign_keys = OFF` and turns foreign keys on at the start of
+   * every `batch`, matching Turso HTTP. `migrate` still runs for real.
+   * Pass false only when a test has to change foreign keys on that
+   * connection, and say why at the call. The production database is only
+   * read for the deployed version.
+   */
+  tursoLike?: boolean;
 };
 
 /**
@@ -59,6 +69,7 @@ export const testPendingMigrations = async (
     allMigrations,
     seedData = true,
     seed,
+    tursoLike = true,
   } = options;
 
   // 1. Query production for deployed version
@@ -91,7 +102,8 @@ export const testPendingMigrations = async (
   }
   mkdirSync(dirname(localDbPath), { recursive: true });
 
-  const localDb = createDatabase({ type: 'file', path: localDbPath });
+  const fileDb = createDatabase({ type: 'file', path: localDbPath });
+  const localDb = tursoLike ? tursoLikeDatabase(fileDb) : fileDb;
 
   try {
     // 4. Run deployed migrations

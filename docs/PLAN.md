@@ -675,48 +675,49 @@ Status lives in that plan's execution index. These checkboxes do not repeat it.
 - [x] M2.3 Split `@yoink/infrastructure`
 - [x] M2.4 Create `edges/_shared/`
 
-### M3: HTTP out of modules, public API v1 live - In progress
+### M3: HTTP out of modules, public API v1 live - Done
 - [x] M3.1 Public API v1 contracts
 - [x] M3.2 `edges/public-api/v1/` at `/api/v1` and the `/api` alias
 - [x] M3.3 `edges/legacy/` for client-only routes
 - [x] M3.4 `edges/ops/` and `edges/test-fixtures/`
 - [x] M3.5 Auth middlewares to `edges/_shared/`
 - [x] M3.6 Retire HTTP tests from module folders
-- [x] M3.7 Remove test-helper SQL ownership exceptions (#324; correction #338, `a93e1bc1`)
-- [x] M3.7 correction: helper filenames and the test-support exemption (#338, `a93e1bc1`)
+- [x] M3.7 Remove test-helper SQL ownership exceptions
+- [x] M3.7 correction: helper filenames and the test-support exemption
 - [x] Health HTTP error mapper on the ops edge
-- [x] OPENAPI-V1 Evaluate a Zod 3 converter before promoting `/api/v1` (done, #334, `30f08e33`)
-- [x] TOKEN-LIST Confirm integration token listing and pin public v1 (done, #340, `dc7da804`)
+- [x] OPENAPI-V1 Evaluate a Zod 3 converter before promoting `/api/v1`
+- [x] TOKEN-LIST Confirm integration token listing and pin public v1
 - [x] LINT-ACCEPTANCE Acceptance-test lint joins quality; browser suite stays in the E2E job
 
-### M4: Unit of work, integration events, history as sink - In progress
+### M4: Unit of work, integration events, history as sink - Done
 - [x] M4.1 Kernel unit-of-work types, SQLite and in-memory implementations
-- [x] M4.1b One batch inside the transaction (done, #336, `db30c387`)
+- [x] M4.1b One batch inside the transaction
 - [x] M4.2 Create `modules/history/` and move the change log
 - [x] M4.3 History as the event sink
-- [x] M4.4 Remove guards that read across modules. M4.4 is Done (#381, `e6cc4e2b`, Trunk 42903127766).
+- [x] M4.4 Remove guards that read across modules
 
-### M5: Modules, one at a time - M5.1 done
+### M5: Modules, one at a time - In progress
 - [x] M5.1-check History subject type allows capture
-- [x] M5.1 Captures (done, #343, `72780cac`)
-- [x] M5.2 Task Management: structural merge. Done (#352, `4c4b28bb`, Trunk 42701505987).
-- [x] M5.3 Task Management: interface, unit of work, events. Done (#361, `954619ed`, Trunk 42731265947).
-- [x] M5.4 Task Management: legacy services and the domain importing HTTP code. M5.4 is Done (#375, `300dd1f3`, Trunk 42845309412).
-- [x] M5.5 Processing workflow and delete-source-capture policy. M5.5 is Done (#373, `8903adaf`, Trunk 42822389879).
-- [x] M5.6 Remove `tasks.capture_id → captures` foreign key. M5.6 is Done (#383, `4a583b08`; #387, `6bb9291e`, Trunk 42924967676). #252 is closed.
-- [x] M5.7 Notes. M5.7 is Done (#376, `4ae674c1`, Trunk 42854951002).
-- [ ] M5.8 Notes settings table and the mirror-bot column. M5.8a is Done (#380, `d057cb15`, Trunk 42878712223). M5.8b is Done (#382, `5259f75f`, Trunk 42932612111). #255 is closed. M5.8c is In review. M5.8d is not.
-- [x] M5.9 Remove `project_notes.project_id → projects` foreign key. M5.9 is Done (#384, `166a1201`, Trunk 42939409979). #258 is closed.
-- [x] M5.10 Review and history (queries). CL-REVIEW is decided. M5.10-review is Done (#379, `ea48d512`, Trunk 42895657418). M5.10-history is Done (#385, `a86c16e5`, Trunk 42945745666). #260 is closed.
-- [ ] M5.11 Own types per module. M5.11-captures is Done (#347, `5fe952f8`). Trunk run 42666346288 failed on flaky #356. The first passing Trunk that contains it is 42686703032 on `7cca4c32` (deploy and smoke green). M5.11-task-management is Done (#386, `41d57f1a`, Trunk 42952475877). #262 is closed. Notes, review, history, and access remain.
-- [x] M5.12 Access: interface, unit of work, signup atomicity (done, #342, `bf10fb6d`; interim adapters deferred)
-- [ ] M5.13 Access: migrate legacy services (closes 8.5.4). M5.13-admin is done (#345, `e8383e62`). M5.13-admin-session is Done (#357, `b66c9614`, Trunk 42716066202). M5.13-agent is Done (#360, `c60f9ad7`, Trunk 42746581115). M5.13-invitation is Done (#363, `6e2e3ec2`, Trunk 42756314488). M5.13-membership is Done (#365, `37f65dd9`, Trunk 42769143582). M5.13-organization is Done (#367, `151129a8`, Trunk 42782504262). M5.13-passkey is Done (#369, `670799a2`, Trunk 42796599295). M5.13-session is Done (#372, `ffb8192e`, Trunk 42813995290). M5.13-signup is Done (#374, `5e5cc2c8`, Trunk 42835525171). M5.13-token is Done (#377, `6050eac0`, Trunk 42865576765). M5.13-user is Done (#378, `b8718c92`, Trunk 42886817299). The other access services are not.
+- [x] M5.1 Captures
+- [x] M5.2 Task Management: structural merge
+- [x] M5.3 Task Management: interface, unit of work, events
+- [x] M5.4 Task Management: legacy services and the domain importing HTTP code
+- [x] M5.5 Processing workflow and delete-source-capture policy
+- [x] M5.6 Remove `tasks.capture_id → captures` foreign key
+- [x] M5.7 Notes
+- [ ] M5.8 Notes settings table and the mirror-bot column
+- [x] M5.9 Remove `project_notes.project_id → projects` foreign key
+- [x] M5.10 Review and history (queries)
+- [ ] M5.11 Own types per module
+- [x] M5.12 Access: interface, unit of work, signup atomicity
+- [ ] M5.12b Replace interim access adapters with adapters over access's published queries. Depends on M5.3, M5.7, M5.10-review, and M5.12. Blocks M5.11-access and M7.5.
+- [x] M5.13 Access: migrate legacy services (closes 8.5.4)
 
-### M6: Client edges - Not started
-- [x] M6.1 Extension edge (`/extension-api/v1/`). Done (#350, `ab09e22f`, Trunk 42692777112).
-- [x] M6.2 Web edge foundation (`/web-api/`). Done (#358, `ae8e5ef8`, Trunk 42723879811).
-- [ ] M6.3 Web edge screens. M6.3-settings is Done (#362, `44626fc7`, Trunk 42751521944). M6.3-auth is Done (#364, `d4fb4c44`, Trunk 42762337377). M6.3-tasks-lists is Done (#366, `ba75294b`, Trunk 42775501771). M6.3-project-page is Done (#368, `9c065536`, Trunk 42788324468). M6.3-work is Done (#371, `0fa821ef`, Trunk 42804403406). The other screens are not.
-- [x] M6.4 Admin edge (`/admin-api/`). Done (#359, `07fd98d3`, Trunk 42739846940).
+### M6: Client edges - In progress
+- [x] M6.1 Extension edge (`/extension-api/v1/`)
+- [x] M6.2 Web edge foundation (`/web-api/`)
+- [ ] M6.3 Web edge screens
+- [x] M6.4 Admin edge (`/admin-api/`)
 - [ ] M6.5 Remove client-only legacy routes
 - [ ] M6.6 Remove `/api/admin/...` from the dev proxy and docs
 
@@ -2121,7 +2122,7 @@ When resuming work on this project:
 
 **ADR-001 is accepted.** The migration is not complete. Enforcement moves to `error` in M7.5, not in M1.
 
-Live status is the execution index in [the migration plan](./architecture/adr/001-migration-plan.md). The checkboxes above are the phase list. M0.2's technical spike is complete and has no GitHub issue. M4.1b is done on main (`db30c3872b1c4a5855d285d49f6526fec418e085`, #336). M4.4 is Done (#381, `e6cc4e2b`, Trunk 42903127766). OPENAPI-V1 is done on main (`30f08e333c45e7e7292955fa877c702fbef6374a`, #334). #329 is closed. M3.7 is done on main (#324 and #338, `a93e1bc16f1c1cd99ee367eaeb44f07f914c0635`). M5.1 is done on main (`72780cac9169dd24ab1403ae69395da72f9ee253`, #343). M5.3 is Done (#361, `954619ed`, Trunk 42731265947). M5.4 is Done (#375, `300dd1f3`, Trunk 42845309412). #250 is closed. M5.5 is Done (#373, `8903adaf`, Trunk 42822389879). M5.6 is Done (#383, `4a583b08`; #387, `6bb9291e`, Trunk 42924967676). #252 is closed. M5.7 is Done (#376, `4ae674c1`, Trunk 42854951002). M5.8a is Done (#380, `d057cb15`, Trunk 42878712223). M5.8b is Done (#382, `5259f75f`, Trunk 42932612111). #255 is closed. M5.8c is In review. M5.8d is not. M5.9 is Done (#384, `166a1201`, Trunk 42939409979). #258 is closed. The health HTTP mapper is done. Acceptance-test lint is in quality, and the browser suite stays in the E2E job. Work-query ownership (CL-WORK) is done: Justin adopted option 1 on 2026-11-09 at 10:43am CST ([#243](https://github.com/jmhill/yoink/issues/243#issuecomment-6745725026)). Review-policy ownership (CL-REVIEW) is done: Justin adopted option 1 at the same time ([#244](https://github.com/jmhill/yoink/issues/244#issuecomment-6745725813)). M5.2 is Done (#352, `4c4b28bb`, Trunk 42701505987). M5.10-review is Done (#379, `ea48d512`, Trunk 42895657418). M5.10-history is Done (#385, `a86c16e5`, Trunk 42945745666). #260 is closed. TOKEN-LIST is done on main (`dc7da8044357eda0887f9a9fc7e86acb002b3a58`, #340). #327 is closed. M5.12 is done on main (`bf10fb6d2fda5c92f39da769e61b9871aa50ad7f`, #342). Replacing the M5.3, M5.7, and M5.10 interim adapters is deferred until those tasks exist. It was a no-op here. M5.13-admin is done on main (`e8383e626c81de47e16ad352932254f2c9bd2bc1`, #345). #268 is closed. M5.13-admin-session is Done (#357, `b66c9614`, Trunk 42716066202). M5.13-agent is Done (#360, `c60f9ad7`, Trunk 42746581115). M5.13-invitation is Done (#363, `6e2e3ec2`, Trunk 42756314488). M5.13-membership is Done (#365, `37f65dd9`, Trunk 42769143582). M5.13-organization is Done (#367, `151129a8`, Trunk 42782504262). M5.13-passkey is Done (#369, `670799a2`, Trunk 42796599295). M5.13-session is Done (#372, `ffb8192e`, Trunk 42813995290). M5.13-signup is Done (#374, `5e5cc2c8`, Trunk 42835525171). M5.13-token is Done (#377, `6050eac0`, Trunk 42865576765). M5.13-user is Done (#378, `b8718c92`, Trunk 42886817299). M6.3-settings is Done (#362, `44626fc7`, Trunk 42751521944). M6.3-auth is Done (#364, `d4fb4c44`, Trunk 42762337377). M6.3-tasks-lists is Done (#366, `ba75294b`, Trunk 42775501771). M6.3-project-page is Done (#368, `9c065536`, Trunk 42788324468). M6.3-work is Done (#371, `0fa821ef`, Trunk 42804403406). The other M6.3 screens are not. Token check errors are Done (#351, `81a6be7a`, Trunk 42708436631). #209 is closed. M6.1 is Done (#350, `ab09e22f`, Trunk 42692777112). M6.2 is Done (#358, `ae8e5ef8`, Trunk 42723879811). M6.4 is Done (#359, `07fd98d3`, Trunk 42739846940). M5.11-captures is Done (#347, `5fe952f8`). Trunk run 42666346288 failed on flaky #356. The first passing Trunk that contains it is 42686703032 on `7cca4c32` (deploy and smoke green). #261 is closed. M5.11-task-management is Done (#386, `41d57f1a`, Trunk 42952475877). #262 is closed. Known issues: #354 (API died mid-E2E on `bf10fb6d`; the file `client.transaction()` leak was fixed in #343 and is not still open on this tree), #356, and #370 (one trash response waited 30s; the suite otherwise passed, so it is not a leaked transaction). Unit-of-work writes now roll back at 5s and warn at 1s. That work is Done (#390, `90530225`, Trunk 42957269989).
+Live status, merge commits, and Trunk run ids are the execution index in [the migration plan](./architecture/adr/001-migration-plan.md). The checkboxes above are the phase list.
 
 ### Earlier focus: Judge captures/lists/task-update sandwich, then 8.5.4
 

@@ -4723,6 +4723,11 @@ export const createPlaywrightActor = (
       const trashGate = new Promise<void>((resolve) => {
         releaseTrash = resolve;
       });
+      let trashPosts = 0;
+      let markHeld = (): void => undefined;
+      const held = new Promise<void>((resolve) => {
+        markHeld = resolve;
+      });
       const trashRoute = async (route: {
         request: () => { method: () => string };
         continue: () => Promise<void>;
@@ -4731,28 +4736,47 @@ export const createPlaywrightActor = (
           await route.continue();
           return;
         }
+        trashPosts += 1;
+        if (trashPosts === 1) {
+          markHeld();
+        }
         await trashGate;
         await route.continue();
       };
 
-      const firstId = await page.locator('[data-process-ready]').getAttribute('data-process-current');
+      const ready = page.locator('[data-process-ready]');
+      const firstId = await ready.getAttribute('data-process-current');
       if (!firstId) {
         throw new Error('Process should show a current capture before Delete');
       }
       await page.route(isCaptureTrashPost, trashRoute);
       try {
         await page.keyboard.press('Delete');
-        await expect(page.locator('[data-process-ready]')).not.toHaveAttribute(
-          'data-process-current',
-          firstId
-        );
+        await held;
+        // The inbox removal is optimistic and finishes before this POST
+        // is sent, so the next card is already current while the response
+        // is held. The key lock stays until the mutation settles. Delete
+        // in that window must not send a second trash POST or change the
+        // card that is showing.
+        await expect(ready).toHaveAttribute('data-process-key-lock', '');
+        await expect(ready).not.toHaveAttribute('data-process-current', firstId);
+        const currentWhileHeld = await ready.getAttribute('data-process-current');
+        if (!currentWhileHeld) {
+          throw new Error('Process should show a capture while the trash response is held');
+        }
         await page.keyboard.press('Delete');
+        await expect(ready).toHaveAttribute('data-process-key-lock', '');
+        await expect(ready).toHaveAttribute('data-process-current', currentWhileHeld);
+        expect(trashPosts).toBe(1);
         const settled = page.waitForResponse(
           (response) =>
             isCaptureTrashPost(new URL(response.url())) && response.request().method() === 'POST'
         );
         releaseTrash();
         await settled;
+        expect(trashPosts).toBe(1);
+        await expect(ready).toHaveAttribute('data-process-current', currentWhileHeld);
+        await expect(ready).not.toHaveAttribute('data-process-key-lock');
       } finally {
         releaseTrash();
         await page.unroute(isCaptureTrashPost, trashRoute);

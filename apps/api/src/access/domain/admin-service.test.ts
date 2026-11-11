@@ -1,12 +1,17 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
 import { BOT_CANNOT_BE_OWNER_MESSAGE } from './organization-errors.js';
 import { createAdminService, type AdminService } from '../application/handle-admin.js';
+import {
+  adminProjectNotFoundError,
+  type AdminProjectNotFoundError,
+  type AdminProjectStorageError,
+} from './admin-errors.js';
 import { createFakeOrganizationStore } from '../infrastructure/fake-organization-store.js';
 import { createFakeOrganizationMembershipStore } from '../infrastructure/fake-organization-membership-store.js';
 import { createFakeUserStore } from '../infrastructure/fake-user-store.js';
 import { createFakeInvitationStore } from '../infrastructure/fake-invitation-store.js';
 import { createFakeTokenStore } from '../infrastructure/fake-token-store.js';
-import { createFakeProjectStore } from '../../modules/task-management/testing.js';
 import type { Organization } from './organization.js';
 import type { User } from './user.js';
 import {
@@ -14,6 +19,34 @@ import {
   createFakeIdGenerator,
   createFakePasswordHasher,
 } from '@yoink/infrastructure';
+
+type StoredAdminProject = {
+  id: string;
+  name: string;
+  createdAt: string;
+};
+
+/** The two methods admin calls. This test does not import task-management. */
+const createAdminProjectStore = <T extends StoredAdminProject>(initial: readonly T[] = []) => {
+  const projects: T[] = initial.map((project) => ({ ...project }));
+  return {
+    findById(id: string): ResultAsync<T | null, AdminProjectStorageError> {
+      return okAsync(projects.find((project) => project.id === id) ?? null);
+    },
+    updateCreatedAt(
+      id: string,
+      createdAt: string
+    ): ResultAsync<void, AdminProjectStorageError | AdminProjectNotFoundError> {
+      const index = projects.findIndex((project) => project.id === id);
+      const current = index === -1 ? undefined : projects[index];
+      if (current === undefined) {
+        return errAsync(adminProjectNotFoundError(id));
+      }
+      projects[index] = { ...current, createdAt };
+      return okAsync(undefined);
+    },
+  };
+};
 
 describe('AdminService', () => {
   let service: AdminService;
@@ -34,7 +67,7 @@ describe('AdminService', () => {
       userStore,
       invitationStore: createFakeInvitationStore(),
       tokenStore,
-      projectStore: createFakeProjectStore(),
+      projectStore: createAdminProjectStore(),
       clock: createFakeClock(new Date('2024-06-15T12:00:00.000Z')),
       idGenerator: createFakeIdGenerator(),
       passwordHasher: createFakePasswordHasher(),
@@ -667,7 +700,7 @@ describe('AdminService', () => {
         lastChangedAt: '2026-10-11T12:00:00.000Z',
         lastChangedBy: '550e8400-e29b-41d4-a716-446655440002',
       };
-      const projectStore = createFakeProjectStore([garden]);
+      const projectStore = createAdminProjectStore([garden]);
       const local = createAdminService({
         organizationStore,
         organizationMembershipStore,

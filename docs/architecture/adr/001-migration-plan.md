@@ -20,7 +20,7 @@ The [execution index](#execution-index) is the only status list: task keys, logi
 1. **Releasable.** `pnpm quality` passes. If the task touches HTTP, auth, persistence or the composition root, `pnpm e2e:test` also passes.
 2. **No behaviour change** unless the task says otherwise. Moves and renames preserve git history (`git mv`).
 3. **Expand/migrate/contract.** A task never removes an old path, route, column or adapter that still has callers. Removal is its own task, or its own final step once callers are gone.
-4. **Baselines never grow.** The ESLint warning count and the table-ownership allowlist (M1.2) must not increase. Shrink them where the task removes violations. The baselines are allowlist 0, API lint 5 warnings (`boundaries/element-types`), and web 32.
+4. **Baselines never grow.** ADR §10 rules are `error`. The boundaries warning count is 0. Web stays 32 (`react-hooks/set-state-in-effect` 25, `react-hooks/exhaustive-deps` 7). The table-ownership allowlist is gone.
 5. **Docs updated:**
    - mark the task in `docs/PLAN.md`
    - update `apps/api/AGENTS.md` if the task changes where things live
@@ -677,7 +677,7 @@ Task management's principal lookup, member ids, and user name, notes' actor list
   - Delete the fixture edge if every route is replaced. Otherwise document the remaining ones and the reason in the ADR.
 - **Accept:** the table-ownership exemption for `edges/test-fixtures/` is removed, or justified in writing.
 
-`M7.4` is Done (#406, `3ca473c7`, Trunk 43034876654). #297 is closed. The five routes stay, and the `edges/test-fixtures/` exemption stays. The allowlist stays empty. `app.ts` and `composition-root.ts` do not change. Each route is registered only when `YOINK_TEST_FIXTURES=true`. The process refuses to start, before it listens, when that flag is true and `FLY_APP_NAME` is `jhtc-yoink-api`, or when `TURSO_DATABASE_URL` names the `yoink-prod` database. That refusal is Done (#410, `39ed8c77`, Trunk 43061150447). `NODE_ENV` is not that signal: the e2e image sets `NODE_ENV=production` and `YOINK_TEST_FIXTURES=true` with a local file database.
+`M7.4` is Done (#406, `3ca473c7`, Trunk 43034876654). #297 is closed. The five routes stay, and the `edges/test-fixtures/` exemption stays. The allowlist stays empty until M7.5 removes the file. `app.ts` and `composition-root.ts` do not change. Each route is registered only when `YOINK_TEST_FIXTURES=true`. The process refuses to start, before it listens, when that flag is true and `FLY_APP_NAME` is `jhtc-yoink-api`, or when `TURSO_DATABASE_URL` names the `yoink-prod` database. That refusal is Done (#410, `39ed8c77`, Trunk 43061150447). `NODE_ENV` is not that signal: the e2e image sets `NODE_ENV=production` and `YOINK_TEST_FIXTURES=true` with a local file database.
 
 `POST /test-api/review-fixture/backdate` sets `projects.created_at`, `projects.last_changed_at`, and `change_log.occurred_at` for one project so Review can seed a quiet row without sleeping. `POST /test-api/review-fixture/finish-task` sets `tasks.completed_at` and `completed_by` so a done-list week can be seeded. Create and complete stamp `clock.now()`. A process-wide fake clock would move every parallel e2e test. No authed command sets those timestamps.
 
@@ -685,9 +685,9 @@ Task management's principal lookup, member ids, and user name, notes' actor list
 
 The e2e database is a Docker volume. The harness cannot seed it through the unit of work. Replacing any of these routes needs a new product command or a shared clock. Neither is in this task.
 
-### M7.5 All enforcement at `error` (absorbs 8.5.5)
+### M7.5 All enforcement at `error` (absorbs 8.5.5) - In review
 
-**Execution:** `M7.5`. [#298](https://github.com/jmhill/yoink/issues/298).
+**Execution:** `M7.5`. [#298](https://github.com/jmhill/yoink/issues/298). In review.
 
 - **Depends on:** M3.7, all of M5, M6.5
 - **Do:**
@@ -754,7 +754,7 @@ M4.4 runs after every M5 task that removes callers of history's cross-module gua
 
 Tycho owns engineering decisions, tests, architecture review, and merge gates. There is no routine per-issue check-in. Escalate only a genuinely major architecture, product, security, data-safety, or scope decision, or a blocker that needs Justin. Everyday implementation choices stay with Tycho.
 
-One bounded task per coder. Serialize edits to `composition-root.ts`, `app.ts`, this plan, and ADR-001. No new module kit and no DI container. Domain stays a pure `Result` with closed error unions. Effects stay in adapters. Only the owning module's infrastructure names a table in SQL. Baselines and the table-ownership allowlist only shrink. Public v1 and the `/api` alias keep today's HTTP status and error bodies. Migrations are forward-only. Compatibility windows and sunset dates are gates, not guesses. Do not apply the `approved-plan` label. This authorization was not approval in the Yoink Dev Team room.
+One bounded task per coder. Serialize edits to `composition-root.ts`, `app.ts`, this plan, and ADR-001. No new module kit and no DI container. Domain stays a pure `Result` with closed error unions. Effects stay in adapters. Only the owning module's infrastructure names a table in SQL. Baselines do not grow. The table-ownership allowlist is gone. Public v1 and the `/api` alias keep today's HTTP status and error bodies. Migrations are forward-only. Compatibility windows and sunset dates are gates, not guesses. Do not apply the `approved-plan` label. This authorization was not approval in the Yoink Dev Team room.
 
 `CL-WORK` (#243) and `CL-REVIEW` (#244) are done. Justin adopted option 1 for both on 2026-11-09 at 10:43am CST ([#243](https://github.com/jmhill/yoink/issues/243#issuecomment-6745725026), [#244](https://github.com/jmhill/yoink/issues/244#issuecomment-6745725813)). Token listing (#327) is done ([#340](https://github.com/jmhill/yoink/pull/340), `dc7da8044357eda0887f9a9fc7e86acb002b3a58`). [#327](https://github.com/jmhill/yoink/issues/327) is closed.
 
@@ -865,6 +865,6 @@ The logical dependencies plus the serialization edges were checked together. The
 | `M7.2` | `M7.1` | — | Gated | (a) ADR §9: the sunset date has passed, the alias has had no calls for 30 days, and any remaining token owner has been contacted. (b) Justin's explicit approval on #295. Green CI is not enough. | [#295](https://github.com/jmhill/yoink/issues/295) |
 | `M7.3` | `M7.2` | — | Not started | External gate: PLAN 7.7c is done, plus M7.2. Do not perform 7.7c here. | [#296](https://github.com/jmhill/yoink/issues/296) |
 | `M7.4` | `M5.10-review`, `M5.12` | — | Done (#406, `3ca473c7`, Trunk 43034876654). #297 is closed. | The five `/test-api` routes stay. Each writes a state no authed command produces. A process-wide clock would race parallel e2e. The harness cannot seed the Docker volume through the unit of work. The `edges/test-fixtures/` exemption stays. The allowlist stays empty. `app.ts` and `composition-root.ts` do not change. The process refuses to start when fixtures are on for Fly app `jhtc-yoink-api` or database `yoink-prod`. That refusal is Done (#410, `39ed8c77`, Trunk 43061150447). | [#297](https://github.com/jmhill/yoink/issues/297) |
-| `M7.5` | `M3.7`, `M4.4`, `M5.6`, `M5.8d`, `M5.9`, `M5.11-captures`, `M5.11-task-management`, `M5.11-notes`, `M5.11-review`, `M5.11-history`, `M5.11-access`, `M5.12b`, `M6.5-web`, `M6.5-admin` | — | Not started | None. M3.7 already removed the test-helper rows. | [#298](https://github.com/jmhill/yoink/issues/298) |
+| `M7.5` | `M3.7`, `M4.4`, `M5.6`, `M5.8d`, `M5.9`, `M5.11-captures`, `M5.11-task-management`, `M5.11-notes`, `M5.11-review`, `M5.11-history`, `M5.11-access`, `M5.12b`, `M6.5-web`, `M6.5-admin` | — | In review | ADR §10 rules are `error`. The allowlist file is gone. Boundaries warnings are 0. Web stays 32. `app.ts` and `composition-root.ts` do not change. | [#298](https://github.com/jmhill/yoink/issues/298) |
 | `M7.6` | `M7.2`, `M6.5-web`, `M6.5-admin` | — | Not started | None. | [#299](https://github.com/jmhill/yoink/issues/299) |
 | `M7.7` | `M7.5` | — | Not started | Tycho reviews the grouped log before the status change. | [#300](https://github.com/jmhill/yoink/issues/300) |

@@ -78,7 +78,7 @@ async function lintBoundaries(root: string) {
 }
 
 describe('boundaries target rules', () => {
-  it('allows same-edge and same-module fakes, and warns on the forbidden cases', async () => {
+  it('allows same-edge and same-module fakes, and reports the forbidden cases', async () => {
     const root = await writeTree({
       'src/edges/web/routes.ts': `
         import { mapEdge } from './map.js';

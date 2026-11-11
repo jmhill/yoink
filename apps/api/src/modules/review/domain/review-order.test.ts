@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Project, ReviewProject } from '@yoink/api-contracts';
+import type { Project, ReviewProject } from './model/review-document.js';
 import {
   compareReview,
   countReviewReasons,

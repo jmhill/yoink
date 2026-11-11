@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Project } from '@yoink/api-contracts';
+import type { Project } from './model/review-document.js';
 import { buildReviewItems, lastChangeLocalDate } from './build-review.js';
 
 const project = (overrides: Partial<Project> & Pick<Project, 'id' | 'name'>): Project => ({

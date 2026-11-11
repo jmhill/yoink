@@ -1,5 +1,5 @@
 import type { ResultAsync } from 'neverthrow';
-import type { ReviewCounts } from '@yoink/api-contracts';
+import type { ReviewCounts } from './model/review-document.js';
 import type { KeysetCursor } from '../../../kernel/listing/domain/keyset-cursor.js';
 import type { KeysetRows } from '../../../kernel/listing/domain/listed-page.js';
 import type { RankedReviewProject } from './review-order.js';

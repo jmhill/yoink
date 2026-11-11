@@ -1,4 +1,4 @@
-import type { ReviewCounts, ReviewProject } from '@yoink/api-contracts';
+import type { ReviewCounts, ReviewProject } from './model/review-document.js';
 import { compareKeyset } from '../../../kernel/listing/domain/keyset-window.js';
 import { reviewKeys, type ReviewCursorRow } from '../../../kernel/listing/domain/list-keys.js';
 

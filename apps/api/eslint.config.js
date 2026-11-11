@@ -115,11 +115,8 @@ const elements = [
   // stay for boundary fixtures.
   // M5.11-notes removed the src/modules/notes/** current element.
   // The old src/notes/** pattern stays for boundary fixtures.
-  // M5.10-review moved review. Target layer rules disallow @yoink/api-contracts,
-  // which this module still imports until M5.11-review. This descriptor is
-  // first, so the current element wins. M5.11-review removes it. The old
-  // src/review/** pattern stays for boundary fixtures.
-  { type: 'review', pattern: 'src/modules/review/**', mode: 'full' },
+  // M5.11-review removed the src/modules/review/** current element.
+  // The folder-mode src/review/** pattern below stays for boundary fixtures.
   // Target layout. Full mode, specific patterns before the directories they
   // sit in, so a test is not typed as the layer it lives in.
   {
@@ -574,9 +571,9 @@ export default [
             },
             // M3.2. Only the public-api edge, not every edge. These are the
             // module handlers this edge still calls:
-            // M5.1 captures, M5.2 task-management, M5.7 notes,
-            // M5.10 review. M5.11-history history is module-entry, which the
-            // general edge rule already allows.
+            // M5.1 captures. M5.11-notes, M5.11-review, and M5.11-history
+            // indexes are module-entry, which the general edge rule already
+            // allows. `notes` and `review` stay for the folder-mode fixtures.
             // Processing is a workflow, reached through workflow-entry on the
             // general edge rule. Access is not allowed.
             // Task, project, list, and work routes call the task-management

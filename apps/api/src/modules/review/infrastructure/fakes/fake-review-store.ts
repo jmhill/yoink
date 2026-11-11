@@ -1,19 +1,19 @@
 import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
-import type { Project, Task } from '@yoink/api-contracts';
-import { DEFAULT_VIEWER_TIME_ZONE } from '../../../kernel/viewer-today.js';
-import { pageOrdered } from '../../../kernel/listing/domain/keyset-window.js';
-import { doneListDirection, doneListKeys, reviewDirection, reviewKeys } from '../../../kernel/listing/domain/list-keys.js';
-import { buildReviewItems } from '../domain/build-review.js';
-import { reviewCandidatesFromFacts } from '../application/review-from-facts.js';
-import { asFinishedTaskOrNull, type DoneListRow } from '../domain/group-done.js';
-import { countReviewReasons } from '../domain/review-order.js';
-import { storageError, type StorageError } from '../domain/review-errors.js';
+import type { Project, Task } from '../../domain/model/review-document.js';
+import { DEFAULT_VIEWER_TIME_ZONE } from '../../../../kernel/viewer-today.js';
+import { pageOrdered } from '../../../../kernel/listing/domain/keyset-window.js';
+import { doneListDirection, doneListKeys, reviewDirection, reviewKeys } from '../../../../kernel/listing/domain/list-keys.js';
+import { buildReviewItems } from '../../domain/build-review.js';
+import { reviewCandidatesFromFacts } from '../../application/review-from-facts.js';
+import { asFinishedTaskOrNull, type DoneListRow } from '../../domain/group-done.js';
+import { countReviewReasons } from '../../domain/review-order.js';
+import { storageError, type StorageError } from '../../domain/review-errors.js';
 import type {
   PageDoneListOptions,
   PageReviewOptions,
   ReviewChangeLogEntry,
   ReviewStore,
-} from '../domain/review-store.js';
+} from '../../domain/review-store.js';
 
 export type FakeReviewStoreOptions = {
   projects?: Project[];

@@ -1,5 +1,5 @@
 import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
-import type { Project, Task } from '@yoink/api-contracts';
+import type { Project, Task } from '../domain/model/review-document.js';
 import { DEFAULT_VIEWER_TIME_ZONE } from '../../../kernel/viewer-today.js';
 import { pageOrdered } from '../../../kernel/listing/domain/keyset-window.js';
 import type { KeysetCursor } from '../../../kernel/listing/domain/keyset-cursor.js';

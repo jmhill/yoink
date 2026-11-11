@@ -4,14 +4,14 @@ import {
   doneFixtureProjects,
   doneFixtureTasks,
   runDoneListStoreContractTests,
-} from '../domain/done-list-store.contract.js';
+} from '../../domain/done-list-store.contract.js';
 import {
   REVIEW_TASK,
   reviewFixtureChangeLog,
   reviewFixtureProjects,
   reviewFixtureTasks,
   runReviewStoreContractTests,
-} from '../domain/review-store.contract.js';
+} from '../../domain/review-store.contract.js';
 import { createFakeReviewStore } from './fake-review-store.js';
 
 describe('FakeReviewStore', () => {

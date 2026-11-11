@@ -1,6 +1,4 @@
 import { errAsync, ok, type ResultAsync } from 'neverthrow';
-import type { DoneListGroup, DoneListPage } from '@yoink/api-contracts';
-import { TimeZoneSchema } from '@yoink/api-contracts';
 import { resolveListLimit } from '../../../kernel/listing/domain/list-kind.js';
 import { doneListCursor } from '../../../kernel/listing/domain/list-keys.js';
 import { assembleListedPage } from '../../../kernel/listing/domain/listed-page.js';
@@ -9,7 +7,8 @@ import {
   DEFAULT_VIEWER_TIME_ZONE,
   viewerToday,
 } from '../../../kernel/viewer-today.js';
-import { groupDoneRows, type DoneListGroup as GroupedDoneList } from '../domain/group-done.js';
+import { groupDoneRows, type DoneListGroup } from '../domain/group-done.js';
+import { isIanaTimeZone } from '../domain/time-zone.js';
 import { invalidWeekError, type ListDoneError } from '../domain/review-errors.js';
 import type { ListDoneQuery } from '../domain/review-queries.js';
 import {
@@ -30,13 +29,23 @@ export type HandleListDoneDeps = {
   now: () => Date;
 };
 
-const resolveStoredTimeZone = (raw: string): string => {
-  const parsed = TimeZoneSchema.safeParse(raw);
-  return parsed.success ? parsed.data : DEFAULT_VIEWER_TIME_ZONE;
+export type ReviewDonePage = {
+  timeZone: string;
+  week: { start: string; end: string };
+  previousWeek: string;
+  nextWeek: string | null;
+  groups: readonly DoneListGroup[];
+  otherTaskCount: number;
+  hasMore: boolean;
+  nextCursor: string | null;
+  total: number;
 };
 
+const resolveStoredTimeZone = (raw: string): string =>
+  isIanaTimeZone(raw) ? raw : DEFAULT_VIEWER_TIME_ZONE;
+
 const withCompletedByNames = (
-  groups: readonly GroupedDoneList[],
+  groups: readonly DoneListGroup[],
   nameOf: (userId: string) => string
 ): DoneListGroup[] =>
   groups.map((group) => ({
@@ -52,7 +61,7 @@ const withCompletedByNames = (
 export const handleListDone = (
   query: ListDoneQuery,
   deps: HandleListDoneDeps
-): ResultAsync<DoneListPage, ListDoneError> => {
+): ResultAsync<ReviewDonePage, ListDoneError> => {
   return deps.loadTimeZone(query.organizationId).andThen((rawZone) => {
     const timeZone = resolveStoredTimeZone(rawZone);
     const today = viewerToday({ now: deps.now(), timeZone });

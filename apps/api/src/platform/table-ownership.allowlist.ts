@@ -13,7 +13,8 @@ import type { TableOwnershipAllowlistEntry } from './table-ownership.js';
  * soft-delete. Processing is a workflow and writes through each module.
  * M5.7 moved notes' user, membership, and project lookups onto ports.
  * History writes the note timeline from the integration event.
- * M4.4 removed existsClause. History SQL no longer names another module's table.
+ * M4.4 removed existsClause. M5.10-history moved task, project, note, and
+ * user name reads onto the modules that own those tables.
  */
 export const TABLE_OWNERSHIP_ALLOWLIST = [
   // M5.8c moves organizations.notes_mirror_bot_user_id onto notes_settings.
@@ -32,40 +33,6 @@ export const TABLE_OWNERSHIP_ALLOWLIST = [
     table: 'organizations',
     count: 2,
     removedBy: 'M5.8',
-  },
-
-  // M5.10-history reads task, project, note, and user names through ports.
-  // M5.10-history
-  {
-    path: 'modules/history/infrastructure/sqlite-history-lookups.ts',
-    keyword: 'FROM',
-    table: 'project_notes',
-    count: 1,
-    removedBy: 'M5.10-history',
-  },
-  // M5.10-history
-  {
-    path: 'modules/history/infrastructure/sqlite-history-lookups.ts',
-    keyword: 'FROM',
-    table: 'projects',
-    count: 1,
-    removedBy: 'M5.10-history',
-  },
-  // M5.10-history
-  {
-    path: 'modules/history/infrastructure/sqlite-history-lookups.ts',
-    keyword: 'FROM',
-    table: 'tasks',
-    count: 1,
-    removedBy: 'M5.10-history',
-  },
-  // M5.10-history
-  {
-    path: 'modules/history/infrastructure/sqlite-history-lookups.ts',
-    keyword: 'FROM',
-    table: 'users',
-    count: 1,
-    removedBy: 'M5.10-history',
   },
 
 ] as const satisfies readonly TableOwnershipAllowlistEntry[];

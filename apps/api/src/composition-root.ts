@@ -25,6 +25,7 @@ import { createSimpleWebAuthnVerifier } from './access/infrastructure/simpleweba
 import { accessSqlParticipant } from './access/infrastructure/persistence/access-sql-participant.js';
 import { createFakeSignupParticipant } from './access/infrastructure/fakes/fake-signup-participant.js';
 import { createSqliteOrganizationTimeZone } from './access/infrastructure/sqlite-organization-time-zone.js';
+import { loadActorNamesFromSqlite } from './access/infrastructure/load-actor-names.js';
 import { loadNamedAgentFromSqlite } from './access/infrastructure/load-named-agent.js';
 import { createCaptures } from './modules/captures/index.js';
 import { createFakeCaptureParticipant } from './modules/captures/infrastructure/fakes/fake-capture-participant.js';
@@ -45,6 +46,7 @@ import { createNotes, storageError as noteStorageError } from './modules/notes/i
 import { createFakeNotesBackend } from './modules/notes/infrastructure/fakes/fake-notes-backend.js';
 import { createFakeNotesParticipant } from './modules/notes/infrastructure/fakes/fake-notes-participant.js';
 import { notesSqlParticipant } from './modules/notes/infrastructure/persistence/notes-sql-participant.js';
+import { loadNoteSubjectFacts } from './modules/notes/infrastructure/persistence/note-subject-facts.js';
 import { createSqliteNotesStore } from './modules/notes/infrastructure/persistence/sqlite-notes-store.js';
 import { loadOrgPersonFromSqlite } from './access/infrastructure/load-org-person.js';
 import {
@@ -54,10 +56,14 @@ import {
 import { createSqliteProjectStore } from './modules/task-management/infrastructure/persistence/sqlite-project-store.js';
 import { createSqliteImportStore } from './modules/task-management/infrastructure/persistence/sqlite-import-store.js';
 import { createSqliteTaskStore } from './modules/task-management/infrastructure/persistence/sqlite-task-store.js';
+import {
+  loadProjectNameFacts,
+  loadTaskSubjectFacts,
+} from './modules/task-management/infrastructure/persistence/subject-facts.js';
 import { createPinoCommandLogger, createPinoHistoryReadLogger } from './platform/logging/index.js';
 import { createHistoryHandlers } from './modules/history/index.js';
 import { createSqliteChangeLogStore } from './modules/history/infrastructure/sqlite-change-log-store.js';
-import { createSqliteTimelineLookups } from './modules/history/infrastructure/sqlite-history-lookups.js';
+import { createTimelineLookups } from './modules/history/infrastructure/timeline-lookups.js';
 import { createSqliteWorkStore } from './modules/task-management/infrastructure/persistence/sqlite-work-store.js';
 import { createSqliteProjectChanges } from './modules/history/infrastructure/sqlite-project-changes.js';
 import {
@@ -669,13 +675,31 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
   });
 
   const changeLogStore = createSqliteChangeLogStore(database);
+  const loadLookups = createTimelineLookups({
+    loadTaskSubjects: (ids) =>
+      loadTaskSubjectFacts(database)(ids).mapErr((error) =>
+        storageError(error.message, error.cause)
+      ),
+    loadProjectNames: (ids) =>
+      loadProjectNameFacts(database)(ids).mapErr((error) =>
+        storageError(error.message, error.cause)
+      ),
+    loadNoteSubjects: (ids) =>
+      loadNoteSubjectFacts(database)(ids).mapErr((error) =>
+        storageError(error.message, error.cause)
+      ),
+    loadActorNames: (ids) =>
+      loadActorNamesFromSqlite(database)(ids).mapErr((error) =>
+        storageError(error.message, error.cause)
+      ),
+  });
   const historyHandlers = createHistoryHandlers({
     loadProject: (id) => projectStore.findById(id),
     loadTaskIncludingDeleted: (id) => taskStore.findByIdIncludingDeleted(id),
     pageProjectHistory: (options) => changeLogStore.pageVisibleForProject(options),
     pageTaskHistory: (options) => changeLogStore.pageVisibleForTask(options),
     pageFinishedTasksInProject: (options) => taskStore.pageFinishedInProject(options),
-    loadLookups: createSqliteTimelineLookups(database),
+    loadLookups,
     logger: historyReadLogger,
   });
   const taskHandlers = taskManagement.taskHandlers;
@@ -696,13 +720,12 @@ export const bootstrapApp = async (options: BootstrapOptions): Promise<Bootstrap
       projectChanges(organizationId).mapErr(reviewError),
     loadTimeZone: (organizationId) => organizationTimeZone(organizationId).mapErr(reviewError),
   });
-  const reviewLookups = createSqliteTimelineLookups(database);
   const reviewHandlers = createReviewHandlers({
     pageReview: (options) => reviewStore.pageReview(options),
     loadTimeZone: (organizationId) => reviewStore.loadTimeZone(organizationId),
     pageDoneList: (options) => reviewStore.pageDoneList(options),
     loadCompletedByNames: (userIds) =>
-      reviewLookups({ taskIds: [], userIds, projectIds: [], noteIds: [] }).map(
+      loadLookups({ taskIds: [], userIds, projectIds: [], noteIds: [] }).map(
         (lookups) => (userId: string) => lookups.actorNameOf(userId)
       ),
     now: () => clock.now(),

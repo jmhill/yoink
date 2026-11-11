@@ -13,6 +13,7 @@ import { createWebHistoryHandlers, type WebHistoryDependencies } from './history
 import { createWebInboxHandlers, type WebInboxCaptures } from './inbox.js';
 import { webRequestLog } from './log-context.js';
 import { createWebProcessHandlers, type WebProcessDependencies } from './process.js';
+import { createWebReviewHandlers, type WebReviewDependencies } from './review.js';
 import {
   createWebProjectPageHandlers,
   type WebProjectPageDependencies,
@@ -46,6 +47,11 @@ export type WebApiDependencies = {
    * the same history queries at their current paths.
    */
   history?: WebHistoryDependencies;
+  /**
+   * Review attention and the done week. Public v1 and the `/api` alias keep
+   * the same review queries at their current paths.
+   */
+  review?: WebReviewDependencies;
   /**
    * Process, trash, and snooze. Public v1 and the `/api` alias keep the same
    * commands. Inbox list and create stay on `captures`.
@@ -143,6 +149,7 @@ const mountWebAuth = async (
  * Inbox list and create, tasks and lists when `tasksLists` is set,
  * the project page and staged import when `projectPage` is set,
  * project history and finished tasks when `history` is set,
+ * review list and done when `review` is set,
  * process, trash, and snooze when `process` is set,
  * the Work screen and work lists when `work` is set,
  * settings and organizations when `settings` is set,
@@ -214,6 +221,18 @@ export const registerWebApi = async (
     };
     at('GET', '/projects/:id/history');
     at('GET', '/projects/:id/finished');
+  }
+
+  if (deps.review !== undefined) {
+    const review = new OpenAPIHandler(
+      createWebReviewHandlers(deps.review),
+      openApiHandlerOptions(listedRequestValidationError)
+    );
+    const at = (path: string) => {
+      mount(app, review, 'GET', `${WEB_API_PREFIX}${path}`, deps.combinedAuth);
+    };
+    at('/review/done');
+    at('/review');
   }
 
   if (deps.process !== undefined) {

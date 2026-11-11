@@ -255,8 +255,8 @@ export const createApp = async (deps: AppDependencies) => {
   };
 
   // Inbox, tasks and lists, the project page and staged import, project
-  // history and finished tasks, process, trash, snooze, the Work screen,
-  // settings, and auth when signup exists. Notes and review stay on the
+  // history and finished tasks, review, process, trash, snooze, the Work
+  // screen, settings, and auth when signup exists. Notes stay on the
   // /api alias.
   await registerWebApi(app, {
     captures: deps.captures,
@@ -274,6 +274,9 @@ export const createApp = async (deps: AppDependencies) => {
     },
     history: {
       historyHandlers: deps.historyHandlers,
+    },
+    review: {
+      reviewHandlers: deps.reviewHandlers,
     },
     work: {
       workHandlers: deps.workHandlers,

@@ -7,6 +7,7 @@ import {
   inboxClient,
   listClient,
   processClient,
+  reviewClient,
   organizationClient,
   settingsClient,
   projectClient,
@@ -299,6 +300,40 @@ describe('web OpenAPI client', () => {
       `POST /web-api/captures/${id}/trash`,
       `POST /api/captures/${id}/trash`,
     ]);
+  });
+
+  it('lists review and done on /web-api', async () => {
+    const calls: string[] = [];
+    vi.stubGlobal('fetch', async (url: string) => {
+      calls.push(url);
+      if (url.includes('/review/done')) {
+        return jsonResponse(200, {
+          timeZone: 'America/Chicago',
+          week: { start: '2026-10-05', end: '2026-10-11' },
+          previousWeek: '2026-09-28',
+          nextWeek: null,
+          groups: [],
+          otherTaskCount: 0,
+          hasMore: false,
+          nextCursor: null,
+          total: 0,
+        });
+      }
+      return jsonResponse(200, {
+        projects: [],
+        today: '2026-10-12',
+        counts: { noNextAction: 0, quiet: 0, waiting: 0 },
+        hasMore: false,
+        nextCursor: null,
+        total: 0,
+      });
+    });
+
+    await reviewClient.list({ limit: 10, timeZone: 'America/Chicago' });
+    await reviewClient.done({ limit: 10, week: '2026-10-05' });
+
+    expect(calls[0]?.startsWith('/web-api/review?')).toBe(true);
+    expect(calls[1]?.startsWith('/web-api/review/done?')).toBe(true);
   });
 
   it('accepts a bodyless 204 when deleting a task', async () => {

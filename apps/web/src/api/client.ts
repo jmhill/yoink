@@ -9,6 +9,7 @@ import {
   webListsContract,
   webProcessContract,
   webProjectsContract,
+  webReviewContract,
   webSettingsContract,
   webTasksContract,
   webWorkContract,
@@ -20,7 +21,6 @@ import {
   organizationOrpcContract,
   processCaptureToProjectOrpcContract,
   projectOrpcContract,
-  reviewOrpcContract,
   taskOrpcContract,
 } from '@yoink/api-contracts/orpc';
 import { headersForApiRequest, withBearerAuthorization } from '@/lib/api-request-headers';
@@ -49,7 +49,7 @@ type WebProjectClient = JsonifiedClient<RouterContractClient<typeof webProjectsC
 type WorkClient = JsonifiedClient<RouterContractClient<typeof webWorkContract>>;
 type WebHistoryClient = JsonifiedClient<RouterContractClient<typeof webHistoryContract>>;
 type WebProcessClient = JsonifiedClient<RouterContractClient<typeof webProcessContract>>;
-type ReviewClient = JsonifiedClient<RouterContractClient<typeof reviewOrpcContract>>;
+type ReviewClient = JsonifiedClient<RouterContractClient<typeof webReviewContract>>;
 type NoteClient = JsonifiedClient<RouterContractClient<typeof noteOrpcContract>>;
 
 /**
@@ -297,8 +297,18 @@ export const workClient: WorkClient = createORPCClient(
   })
 );
 
+/**
+ * Review attention and the done week. `/web-api` plus `/review` is
+ * `/web-api/review`. The badge shares `['review']` with the Review screen.
+ * Each call is one Review query. The page does not sort that page.
+ * Public `/api` and `/api/v1` stay on the alias. Project catalog, session,
+ * members, and review writes stay on their current clients.
+ */
 export const reviewClient: ReviewClient = createORPCClient(
-  new OpenAPILink(reviewOrpcContract, { fetch: fetchWithSession })
+  new OpenAPILink(webReviewContract, {
+    origin: '/web-api',
+    fetch: fetchWithSession,
+  })
 );
 
 export const noteClient: NoteClient = createORPCClient(

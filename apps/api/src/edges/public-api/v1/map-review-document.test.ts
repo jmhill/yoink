@@ -2,7 +2,7 @@ import type { ZodTypeAny } from 'zod';
 import { describe, expect, it } from 'vitest';
 import { publicApiV1Contract } from '@yoink/api-contracts/public-api/v1';
 import type { RankedReviewProject, ReviewDonePage } from '../../../modules/review/index.js';
-import { toContractDonePage, toContractReviewPage } from './map-review-document.js';
+import { toContractDonePage, toContractReviewPage } from '../../_shared/map-review-document.js';
 
 const outputSchema = (procedure: { '~orpc': { outputSchemas?: readonly unknown[] } }): ZodTypeAny => {
   const schema = procedure['~orpc'].outputSchemas?.[0];

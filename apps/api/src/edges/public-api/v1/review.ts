@@ -6,7 +6,7 @@ import { openApiHandlerOptions } from '../../_shared/orpc/handler-options.js';
 import type { OrpcHttpContext } from '../../_shared/orpc/http-context.js';
 import { listedRequestValidationError } from '../../_shared/request-validation.js';
 import type { ReviewHandlers } from '../../../modules/review/index.js';
-import { toContractDonePage, toContractReviewPage } from './map-review-document.js';
+import { toContractDonePage, toContractReviewPage } from '../../_shared/map-review-document.js';
 import { mapListDoneError, mapListReviewError } from './review-errors.js';
 
 export type ReviewEdgeDependencies = { reviewHandlers: ReviewHandlers };

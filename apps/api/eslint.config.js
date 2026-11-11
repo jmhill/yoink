@@ -594,7 +594,8 @@ export default [
             // M6.3-work calls the Now, due, and work-list queries, then access member reads.
             // It arranges those pages into sections and does not re-sort them.
             // Open-task pages stay in query order. Project history and finished
-            // tasks call the history entry. Notes stay on the alias.
+            // tasks call the history entry. Review list and done call the review
+            // entry and do not re-sort. Notes stay on the alias.
             // M5.13 replaces the access handlers. This edge does not import access SQL.
             {
               from: [['edge', { edge: 'web' }]],

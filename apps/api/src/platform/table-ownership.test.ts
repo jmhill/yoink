@@ -763,7 +763,7 @@ describe('current tree', () => {
 
   it('passes with the checked-in allowlist and fails closed without it', () => {
     const bare = checkTableOwnership(files, []);
-    expect(TABLE_OWNERSHIP_ALLOWLIST).toHaveLength(2);
+    expect(TABLE_OWNERSHIP_ALLOWLIST).toHaveLength(0);
     expect(TABLE_OWNERSHIP_ALLOWLIST).toHaveLength(bare.violations.length);
     const helperHits = files
       .filter((file) => file.path.startsWith('tests/helpers/'))
@@ -850,10 +850,17 @@ describe('current tree', () => {
     expect(
       count(
         'modules/notes/infrastructure/persistence/load-notes-mirror-bot.ts',
+        'FROM',
+        'organizations'
+      )
+    ).toBe(0);
+    expect(
+      count(
+        'modules/notes/infrastructure/persistence/load-notes-mirror-bot.ts',
         'UPDATE',
         'organizations'
       )
-    ).toBe(2);
+    ).toBe(0);
     expect(count('platform/sql/page-sqlite.ts', 'FROM', 'tasks')).toBe(0);
     expect(
       refsIn('edges/test-fixtures/http-ownerless-workspace-fixture-routes.ts')

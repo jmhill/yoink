@@ -727,12 +727,13 @@ notes-mirror bot gets `403 NOTE_IMPORT_REQUIRES_MIRROR_BOT`. Normal
 PATCH still uses `409 STALE_NOTE`.
 
 The designated bot is one member id per organization, stored on
-`organizations.notes_mirror_bot_user_id`. Justin designates it by minting
+`notes_settings.notes_mirror_bot_user_id`. Justin designates it by minting
 a bot named `Libby notes-mirror` from a signed-in web session (#132) —
-the first such mint is recorded. If that column is empty, the API
-resolves the first org agent with that name and stores it, or uses
-`NOTES_MIRROR_BOT_USER_ID` when set. Other bots may still read the
-changed-since feed; only the designated bot may import.
+the first such mint is recorded. If that row is empty, the API uses
+`NOTES_MIRROR_BOT_USER_ID` when set, without writing, or resolves the
+first org agent with that name and stores it. The old
+`organizations.notes_mirror_bot_user_id` column is not read. Other bots
+may still read the changed-since feed; only the designated bot may import.
 
 ```bash
 # Everything changed since the last successful pull (full set or page)

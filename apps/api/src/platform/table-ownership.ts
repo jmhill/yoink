@@ -72,8 +72,8 @@
  * `users` or `organizations` is. Review owns no table. The unit-of-work
  * guard table has no name until M4.1; add that name here when it exists.
  * `notes_settings` is in the map (M5.8a created it). M5.8b copies non-null
- * mirror-bot ids into it. The old organization column stays the source of
- * truth until M5.8c.
+ * mirror-bot ids into it. M5.8c reads and writes that table. The old
+ * organization column stays until M5.8d and is not read.
  *
  * A migration after {@link LEGACY_MIGRATION_VERSION} declares `owner` and,
  * for `platform`, a non-empty `reason` (`owner: 'platform'` / `reason: '...'`

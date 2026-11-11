@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useState, useEffect } from 'react';
 import { Button } from '@yoink/ui-base/components/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@yoink/ui-base/components/card';
-import { captureClient } from '@/api/client';
+import { inboxClient } from '@/api/client';
 import { getSession } from '@/api/auth';
 import { tokenStorage } from '@/lib/token';
 import { useNetworkStatus } from '@/lib/use-network-status';
@@ -90,7 +90,7 @@ function SharePage() {
     setIsSaving(true);
     try {
       // Use direct mutation (fire-and-forget, no Query caching needed)
-      await captureClient.create({
+      await inboxClient.create({
         content: content.trim() || sourceUrl || '',
         sourceUrl,
         sourceApp: 'share',

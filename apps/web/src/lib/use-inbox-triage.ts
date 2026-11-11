@@ -35,7 +35,7 @@ const errorCode = (err: unknown): string | undefined => {
   return undefined;
 };
 
-/** Badge and process keep `['captures', 'inbox']` on `/api`. The Inbox screen is the next key. */
+/** The process count and the Inbox screen keep separate list keys. */
 const inboxListQueryKeys = [
   ['captures', 'inbox'],
   ['captures', 'inbox', 'screen'],
@@ -116,11 +116,36 @@ type ProcessCapture = {
 
 const INBOX_TRIAGE_TOAST_PREFIX = 'inbox-triage';
 
+type InboxTriageActions = {
+  trash: (input: { id: string }) => Promise<unknown>;
+  restore: (input: { id: string }) => Promise<unknown>;
+  snooze: (input: { id: string; until: string }) => Promise<unknown>;
+  unsnooze: (input: { id: string }) => Promise<unknown>;
+  process: (input: {
+    id: string;
+    type: 'task';
+    data: ReturnType<typeof promoteTaskData>;
+  }) => Promise<unknown>;
+  processToProject: (
+    input: { id: string } & ProcessProjectConfirmInput
+  ) => Promise<{ project: Project }>;
+};
+
+const aliasTriageActions: InboxTriageActions = {
+  trash: (input) => captureClient.trash(input),
+  restore: (input) => captureClient.restore(input),
+  snooze: (input) => captureClient.snooze(input),
+  unsnooze: (input) => captureClient.unsnooze(input),
+  process: (input) => captureClient.process(input),
+  processToProject: (input) => processToProjectClient.processToProject(input),
+};
+
 /**
  * Shared trash / snooze / promote mutations for Capture and Process.
  * Optimistic updates and rollback cover the badge list and the Inbox screen list.
+ * Process passes the `/web-api` actions. Capture keeps the alias.
  */
-export function useInboxTriage() {
+export function useInboxTriage(actions: InboxTriageActions = aliasTriageActions) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const actedIds = useRef(new Set<string>());
@@ -146,7 +171,7 @@ export function useInboxTriage() {
   };
 
   const restoreMutation = useMutation({
-    mutationFn: (input: { id: string }) => captureClient.restore(input),
+    mutationFn: (input: { id: string }) => actions.restore(input),
     onSuccess: () => {
       toast.success('Restored to inbox', { id: triageToastId() });
     },
@@ -163,7 +188,7 @@ export function useInboxTriage() {
   });
 
   const unsnoozeMutation = useMutation({
-    mutationFn: (input: { id: string }) => captureClient.unsnooze(input),
+    mutationFn: (input: { id: string }) => actions.unsnooze(input),
     onSuccess: () => {
       toast.success('Moved to inbox', { id: triageToastId() });
     },
@@ -180,7 +205,7 @@ export function useInboxTriage() {
   });
 
   const trashMutation = useMutation({
-    mutationFn: (input: { id: string }) => captureClient.trash(input),
+    mutationFn: (input: { id: string }) => actions.trash(input),
     onMutate: async ({ id }) => {
       markActed(id);
       await cancelLiveQueries(queryClient);
@@ -235,7 +260,7 @@ export function useInboxTriage() {
   });
 
   const snoozeMutation = useMutation({
-    mutationFn: (input: { id: string; until: string }) => captureClient.snooze(input),
+    mutationFn: (input: { id: string; until: string }) => actions.snooze(input),
     onMutate: async ({ id }) => {
       markActed(id);
       await cancelLiveQueries(queryClient);
@@ -292,7 +317,7 @@ export function useInboxTriage() {
       id: string;
       type: 'task';
       data: ReturnType<typeof promoteTaskData>;
-    }) => captureClient.process(input),
+    }) => actions.process(input),
     onMutate: async ({ id }) => {
       markActed(id);
       await cancelLiveQueries(queryClient);
@@ -330,7 +355,7 @@ export function useInboxTriage() {
 
   const processToProjectMutation = useMutation({
     mutationFn: (input: { id: string } & ProcessProjectConfirmInput) =>
-      processToProjectClient.processToProject(input),
+      actions.processToProject(input),
     onMutate: async ({ id }) => {
       markActed(id);
       await cancelLiveQueries(queryClient);

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@yoink/ui-base/components/button';
 import { Card, CardContent } from '@yoink/ui-base/components/card';
-import { captureClient, isNetworkFailure } from '@/api/client';
+import { inboxClient, isNetworkFailure, processClient } from '@/api/client';
 import { PILE_SAFETY_CAP, type Capture } from '@yoink/api-contracts';
 import { cancelLiveQueries, invalidateLiveQueries, isBlockingQueryFailure } from '@/lib/live-query';
 import { Inbox, AlarmClockOff, Clock } from 'lucide-react';
@@ -35,11 +35,11 @@ function SnoozedPage() {
   const { data, isPending, error, refetch } = useQuery({
     queryKey: ['captures', 'snoozed'],
     queryFn: () =>
-      captureClient.list({ status: 'inbox', snoozed: true, limit: PILE_SAFETY_CAP }),
+      inboxClient.list({ status: 'inbox', snoozed: true, limit: PILE_SAFETY_CAP }),
   });
 
   const unsnoozeMutation = useMutation({
-    mutationFn: (input: { id: string }) => captureClient.unsnooze(input),
+    mutationFn: (input: { id: string }) => processClient.unsnooze(input),
     onMutate: async ({ id }) => {
       // Cancel in-flight queries to prevent overwrites
       await cancelLiveQueries(queryClient);

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { PILE_SAFETY_CAP } from '@yoink/api-contracts';
-import { captureClient, projectClient } from '@/api/client';
+import { inboxClient, projectClient } from '@/api/client';
 import { processBadgeCount } from '@/lib/mobile-tabs';
 import { processBadgeTotal } from '@/lib/process-queue';
 
@@ -8,7 +8,7 @@ export function useProcessCounts() {
   const inboxQuery = useQuery({
     queryKey: ['captures', 'inbox'],
     queryFn: () =>
-      captureClient.list({ status: 'inbox', snoozed: false, limit: PILE_SAFETY_CAP }),
+      inboxClient.list({ status: 'inbox', snoozed: false, limit: PILE_SAFETY_CAP }),
   });
   const proposalsQuery = useQuery({
     queryKey: ['projects', 'proposed'],

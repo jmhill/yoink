@@ -7,6 +7,7 @@ import {
   webHistoryContract,
   webInboxContract,
   webListsContract,
+  webProcessContract,
   webProjectsContract,
   webSettingsContract,
   webTasksContract,
@@ -47,6 +48,7 @@ type ProjectClient = JsonifiedClient<RouterContractClient<typeof projectOrpcCont
 type WebProjectClient = JsonifiedClient<RouterContractClient<typeof webProjectsContract>>;
 type WorkClient = JsonifiedClient<RouterContractClient<typeof webWorkContract>>;
 type WebHistoryClient = JsonifiedClient<RouterContractClient<typeof webHistoryContract>>;
+type WebProcessClient = JsonifiedClient<RouterContractClient<typeof webProcessContract>>;
 type ReviewClient = JsonifiedClient<RouterContractClient<typeof reviewOrpcContract>>;
 type NoteClient = JsonifiedClient<RouterContractClient<typeof noteOrpcContract>>;
 
@@ -197,6 +199,19 @@ export const authWebClient: WebAuthClient = createORPCClient(
 
 export const processToProjectClient: ProcessToProjectClient = createORPCClient(
   new OpenAPILink(processCaptureToProjectOrpcContract, { fetch: fetchWithSession })
+);
+
+/**
+ * Process, trash, and snooze. `/web-api` plus `/captures/{id}/process` is
+ * `/web-api/captures/{id}/process`. Inbox list and create stay on
+ * `inboxClient`. The Inbox screen keeps `captureClient` until its own move.
+ * Public `/api` and `/api/v1` stay on `captureClient`.
+ */
+export const processClient: WebProcessClient = createORPCClient(
+  new OpenAPILink(webProcessContract, {
+    origin: '/web-api',
+    fetch: fetchWithSession,
+  })
 );
 
 export const taskClient: TaskClient = createORPCClient(

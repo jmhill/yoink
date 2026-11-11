@@ -160,6 +160,10 @@ usingDrivers(['playwright'] as const, (ctx) => {
       alice = await ctx.createActor('alice-notes-ui@example.com');
     });
 
+    it('lists and creates project notes on /web-api', async () => {
+      await alice.shouldKeepProjectNotesOnWebEdge();
+    });
+
     it('adds, reads, edits, and shows notes under next action', async () => {
       const garden = await alice.createProject({ name: 'Garden' });
       await alice.updateProject(garden.id, { notebookPages: ['Garden/notes.md'] });

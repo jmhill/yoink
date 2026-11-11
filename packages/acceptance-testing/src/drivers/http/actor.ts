@@ -2400,6 +2400,10 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('shouldKeepProjectPageOnWebEdge', 'http');
     },
 
+    async shouldKeepProjectNotesOnWebEdge(): Promise<void> {
+      throw new UnsupportedOperationError('shouldKeepProjectNotesOnWebEdge', 'http');
+    },
+
     async shouldKeepWorkOnWebEdge(): Promise<void> {
       throw new UnsupportedOperationError('shouldKeepWorkOnWebEdge', 'http');
     },

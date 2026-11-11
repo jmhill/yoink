@@ -1933,9 +1933,15 @@ export type BrowserActorOperations = {
 
   /**
    * The project page and staged import go to `/web-api`.
-   * Finished tasks, history, notes, and the shared project catalog stay on `/api`.
+   * Finished tasks, history, and the shared project catalog stay on `/api`.
    */
   shouldKeepProjectPageOnWebEdge(): Promise<void>;
+
+  /**
+   * Project note list, get, create, update, and delete go to `/web-api`.
+   * Import and changed stay on `/api` for the notes-mirror bot.
+   */
+  shouldKeepProjectNotesOnWebEdge(): Promise<void>;
 
   /**
    * The Work screen and work lists go to `/web-api`.

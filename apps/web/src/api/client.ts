@@ -6,6 +6,7 @@ import {
   webAuthContract,
   webHistoryContract,
   webInboxContract,
+  webNotesContract,
   webListsContract,
   webProcessContract,
   webProjectsContract,
@@ -17,7 +18,6 @@ import {
 import {
   authOrpcContract,
   captureOrpcContract,
-  noteOrpcContract,
   organizationOrpcContract,
   processCaptureToProjectOrpcContract,
   projectOrpcContract,
@@ -50,7 +50,7 @@ type WorkClient = JsonifiedClient<RouterContractClient<typeof webWorkContract>>;
 type WebHistoryClient = JsonifiedClient<RouterContractClient<typeof webHistoryContract>>;
 type WebProcessClient = JsonifiedClient<RouterContractClient<typeof webProcessContract>>;
 type ReviewClient = JsonifiedClient<RouterContractClient<typeof webReviewContract>>;
-type NoteClient = JsonifiedClient<RouterContractClient<typeof noteOrpcContract>>;
+type NoteClient = JsonifiedClient<RouterContractClient<typeof webNotesContract>>;
 
 /**
  * Redirect to login page with current path as return URL.
@@ -311,6 +311,14 @@ export const reviewClient: ReviewClient = createORPCClient(
   })
 );
 
+/**
+ * Project notes list, get, create, update, and delete. `/web-api` plus
+ * `/projects/{projectId}/notes` is `/web-api/projects/{projectId}/notes`.
+ * Import and changed stay on `/api` for the notes-mirror bot.
+ */
 export const noteClient: NoteClient = createORPCClient(
-  new OpenAPILink(noteOrpcContract, { fetch: fetchWithSession })
+  new OpenAPILink(webNotesContract, {
+    origin: '/web-api',
+    fetch: fetchWithSession,
+  })
 );

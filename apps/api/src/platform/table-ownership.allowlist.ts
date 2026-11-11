@@ -5,9 +5,9 @@ import type { TableOwnershipAllowlistEntry } from './table-ownership.js';
  * count from the M1.2 scanner. A new hit is not covered. A hit that goes
  * away makes its entry stale. Do not add an entry to hide a scanner miss.
  *
- * `edges/test-fixtures/` is exempt. The ownerless fixture has no
- * keyword-led table reference. The review fixture's SQL is exempt with
- * that directory. M7.4 retires both files.
+ * `edges/test-fixtures/` stays exempt. M7.4 records why. The ownerless
+ * fixture has no keyword-led table reference. The review fixture's SQL
+ * is exempt with that directory. The allowlist itself stays empty.
  *
  * M5.5 removed the processing statements and task-management's capture
  * soft-delete. Processing is a workflow and writes through each module.

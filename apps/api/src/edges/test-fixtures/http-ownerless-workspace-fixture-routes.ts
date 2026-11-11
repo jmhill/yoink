@@ -28,8 +28,14 @@ export type OwnerlessWorkspaceFixtureDependencies = {
 };
 
 /**
- * Test-only fixtures for owner-invite E2E.
- * Registered only when YOINK_TEST_FIXTURES=true.
+ * Registered only when YOINK_TEST_FIXTURES=true. Admin session only.
+ *
+ * Ownerless-workspace saves an organization with no owner. Admin create
+ * always writes an owner invitation. Expire-invitation sets one invite's
+ * `expiresAt` into the past while sibling invites stay valid. Assign-owner
+ * inserts an owner membership and leaves the pending owner invite; the
+ * product assign-owner path revokes that invite. None of those states is an
+ * authed command. M7.4 keeps these three routes.
  */
 export const registerOwnerlessWorkspaceFixtureRoutes = async (
   app: FastifyInstance,

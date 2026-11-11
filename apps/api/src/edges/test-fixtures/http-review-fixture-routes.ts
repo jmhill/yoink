@@ -19,9 +19,14 @@ export type ReviewFixtureRoutesDependencies = {
 };
 
 /**
- * Clock-injected e2e fixture. Registered only when YOINK_TEST_FIXTURES=true.
- * Backdates created_at, last_changed_at, and every change_log row for the
- * caller's project so Review can seed a quiet row without sleeping.
+ * Registered only when YOINK_TEST_FIXTURES=true.
+ *
+ * Backdate sets `projects.created_at`, `projects.last_changed_at`, and
+ * `change_log.occurred_at` for one project so Review can seed a quiet row
+ * without sleeping. Finish-task sets `tasks.completed_at` and `completed_by`
+ * so a done-list week can be seeded. Create and complete stamp `clock.now()`.
+ * A process-wide fake clock would move every parallel e2e test. No authed
+ * command sets those timestamps. M7.4 keeps both routes.
  */
 export const registerReviewFixtureRoutes = async (
   app: FastifyInstance,

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { BOT_CANNOT_BE_OWNER_MESSAGE } from '@yoink/api-contracts';
+import { BOT_CANNOT_BE_OWNER_MESSAGE } from './organization-errors.js';
 import { decideBotMayHaveRole } from './decide-bot-role.js';
 
 describe('decideBotMayHaveRole', () => {

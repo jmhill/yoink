@@ -1,5 +1,5 @@
 import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
-import type { Member } from '@yoink/api-contracts';
+import { toMember, type Member } from '../domain/member-document.js';
 import type { OrganizationMembership } from '../domain/organization-membership.js';
 import type { User } from '../domain/user.js';
 import { principalKindOf, type PrincipalKind } from '../domain/user.js';
@@ -49,15 +49,6 @@ export type HandleChangeMemberRoleError =
 export type ChangeMemberRoleHandler = (
   request: ChangeMemberRoleRequest
 ) => ResultAsync<Member, HandleChangeMemberRoleError>;
-
-const toMember = (user: User, membership: OrganizationMembership): Member => ({
-  userId: user.id,
-  email: user.email,
-  name: user.name,
-  kind: principalKindOf(user),
-  role: membership.role,
-  joinedAt: membership.joinedAt,
-});
 
 export const roleChangerFromCaller = (request: {
   callerUserId: string;

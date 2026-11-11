@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   BOT_CANNOT_BE_OWNER_MESSAGE,
   TARGET_NOT_WORKSPACE_MEMBER_MESSAGE,
-} from '@yoink/api-contracts';
+} from './organization-errors.js';
 import { decideSetOwner } from './decide-set-owner.js';
 import type { OrganizationMembership } from './organization-membership.js';
 import type { Invitation } from './invitation.js';

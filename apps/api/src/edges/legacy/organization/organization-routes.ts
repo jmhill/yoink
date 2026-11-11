@@ -35,7 +35,8 @@ import type {
   HandleRemoveMemberError,
   RemoveMemberHandler,
 } from '../../../access/application/handle-remove-member.js';
-import { principalKindOf } from '../../../access/domain/user.js';
+import { memberFromListed } from '../../../access/domain/member-document.js';
+import { toContractMember, toContractMemberTransfer } from '../../_shared/map-access-document.js';
 import type { SessionServiceError } from '../../../access/domain/auth-errors.js';
 import type { MembershipServiceError } from '../../../access/domain/organization-errors.js';
 import type { UserServiceError } from '../../../access/domain/user-errors.js';
@@ -516,7 +517,7 @@ export const registerOrganizationRoutes = async (
         actorKind: context.request.authContext.principalKind,
       });
       return result.match(
-        (view) => view,
+        (view) => toContractMemberTransfer(view),
         (error) => {
           throw transferOwnershipErrorResponse(error);
         }
@@ -571,17 +572,9 @@ export const registerOrganizationRoutes = async (
       }
 
       const usersById = new Map(usersResult.value.map((user) => [user.id, user]));
-      const members = membersResult.value.map((membership) => {
-        const user = usersById.get(membership.userId);
-        return {
-          userId: membership.userId,
-          email: user?.email ?? 'unknown',
-          name: user?.name,
-          kind: user ? principalKindOf(user) : ('human' as const),
-          role: membership.role,
-          joinedAt: membership.joinedAt,
-        };
-      });
+      const members = membersResult.value.map((membership) =>
+        toContractMember(memberFromListed(membership, usersById.get(membership.userId)))
+      );
 
       return { members };
     }),
@@ -595,7 +588,7 @@ export const registerOrganizationRoutes = async (
         principalKind: context.request.authContext.principalKind,
       });
       return result.match(
-        (member) => ({ member }),
+        (member) => ({ member: toContractMember(member) }),
         (error) => {
           throw changeMemberRoleErrorResponse(error, context.request.authContext.userId);
         }

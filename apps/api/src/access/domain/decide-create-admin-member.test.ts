@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BOT_CANNOT_BE_ADMIN_MESSAGE } from '@yoink/api-contracts';
+import { BOT_CANNOT_BE_ADMIN_MESSAGE } from './organization-errors.js';
 import {
   decideCreateAdminMember,
   planCreateAdminMember,

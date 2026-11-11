@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'vitest';
-import { normalizeEmail } from '@yoink/api-contracts';
+import { normalizeEmail } from '../domain/email.js';
 import { createSqliteUserStore } from './sqlite-user-store.js';
 import { createTestDatabase, type Database } from '../../platform/database/test-utils.js';
 import type { User } from '../domain/user.js';

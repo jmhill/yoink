@@ -720,8 +720,11 @@ export default [
           ],
         },
       ],
+      // M5.11-access. The transitional package rule is error. Access domain,
+      // application, infrastructure, and tests are also banned from
+      // `@yoink/api-contracts` below. Other boundaries rules stay at warn.
       'boundaries/external': [
-        'warn',
+        'error',
         {
           default: 'disallow',
           rules: [
@@ -894,6 +897,11 @@ export default [
               message:
                 'access contains no Fastify or oRPC imports. HTTP adapters live on an edge.',
             },
+            {
+              group: ['@yoink/api-contracts', '@yoink/api-contracts/**'],
+              message:
+                'access owns its documents. Edges map them onto contract types.',
+            },
           ],
         },
       ],
@@ -920,6 +928,29 @@ export default [
               ],
               message:
                 'access contains no Fastify or oRPC imports. HTTP adapters live on an edge.',
+            },
+            {
+              group: ['@yoink/api-contracts', '@yoink/api-contracts/**'],
+              message:
+                'access owns its documents. Edges map them onto contract types.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // M5.11-access. Tests construct the module documents, not contract schemas.
+    files: ['src/access/**/*.test.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@yoink/api-contracts', '@yoink/api-contracts/**'],
+              message:
+                'access tests construct the module documents. Edges map them onto contract types.',
             },
           ],
         },

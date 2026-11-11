@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   INVITATION_REPLACED_MESSAGE,
   OWNER_INVITE_WRONG_EMAIL_MESSAGE,
-} from '@yoink/api-contracts';
+} from './invitation-errors.js';
 import { decideValidateInvitation } from './decide-validate-invitation.js';
 import type { Invitation } from './invitation.js';
 

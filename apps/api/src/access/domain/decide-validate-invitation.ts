@@ -1,5 +1,5 @@
 import { err, ok, type Result } from 'neverthrow';
-import { normalizeEmail } from '@yoink/api-contracts';
+import { normalizeEmail } from './email.js';
 import type { Invitation } from './invitation.js';
 import { invitationStatus } from './invitation.js';
 import {

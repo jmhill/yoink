@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
+import { BOT_CANNOT_BE_OWNER_MESSAGE } from './organization-errors.js';
 import {
-  BOT_CANNOT_BE_OWNER_MESSAGE,
   PERSONAL_WORKSPACE_OWNER_INVITE_MESSAGE,
   WORKSPACE_ALREADY_HAS_OWNER_MESSAGE,
-} from '@yoink/api-contracts';
+} from './invitation-errors.js';
 import { decideIssueOwnerInvitation } from './decide-issue-owner-invitation.js';
 import type { Organization } from './organization.js';
 import type { OrganizationMembership } from './organization-membership.js';

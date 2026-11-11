@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { errAsync } from 'neverthrow';
-import { OWNER_INVITE_WRONG_EMAIL_MESSAGE } from '@yoink/api-contracts';
+import { OWNER_INVITE_WRONG_EMAIL_MESSAGE } from '../domain/invitation-errors.js';
 import { createSignupService, type SignupService } from './handle-signup.js';
 import { createFakeInvitationStore } from '../infrastructure/fake-invitation-store.js';
 import { createFakeUserStore } from '../infrastructure/fake-user-store.js';

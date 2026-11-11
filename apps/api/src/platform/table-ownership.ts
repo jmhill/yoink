@@ -64,8 +64,9 @@
  * Only the owning module's `infrastructure/` may name its tables. Platform
  * may name platform tables from platform code (`database/` today,
  * `platform/` after M2.2). Workflows, edges, kernel, and every other area
- * may not name a table. `edges/test-fixtures/` is exempt. M7.4 retires
- * those routes.
+ * may not name a table. `edges/test-fixtures/` stays exempt. M7.4
+ * keeps those five routes: each writes a state no authed command
+ * produces, and a process clock would race parallel e2e.
  *
  * `REFERENCES organizations(id)` and `REFERENCES users(id)` are the identity
  * anchors from ADR §5.1. They are not violations. Any other reference to

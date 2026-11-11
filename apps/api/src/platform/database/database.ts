@@ -168,12 +168,31 @@ const databaseFrom = (
 });
 
 /**
+ * One connection, one statement at a time. A rollback queued while a
+ * statement is in flight waits for that statement, then runs. Two executes
+ * on this client overlap into a native segfault.
+ */
+const createOperationQueue = (): (<T>(run: () => Promise<T>) => Promise<T>) => {
+  let tail: Promise<void> = Promise.resolve();
+  return (run) => {
+    const result = tail.then(run, run);
+    tail = result.then(
+      () => undefined,
+      () => undefined
+    );
+    return result;
+  };
+};
+
+/**
  * File and memory clients. `client.transaction()` detaches the connection
  * and never closes it, so each commit leaks a native handle until the
  * process segfaults. `BEGIN` / `COMMIT` stay on the client's own connection.
  * The gate is already held, so these calls must not take it again.
+ * `close` rolls back when the transaction is still open, and releases the
+ * gate only after that rollback settles. A rejected rollback still releases.
  */
-const sameConnectionTransaction = (
+export const beginSameConnectionTransaction = (
   client: Client,
   release: Release,
   before?: () => Promise<void>
@@ -184,53 +203,67 @@ const sameConnectionTransaction = (
     finished = true;
     release();
   };
-  let open = false;
-  const rollback = async (): Promise<void> => {
-    if (!open) return;
-    open = false;
-    await client.execute('ROLLBACK');
-  };
+  let state: 'opening' | 'open' | 'committed' | 'closed' = 'opening';
+  const enqueue = createOperationQueue();
 
   return Promise.resolve()
     .then(() => before?.())
     .then(() => client.execute('BEGIN IMMEDIATE'))
     .then(
-    () => {
-      open = true;
-      return {
-        batch: async (statements) => {
-          const results: { rowsAffected: number }[] = [];
-          for (const statement of statements) {
-            const result = await client.execute({
-              sql: statement.sql,
-              args: [...statement.args] as InValue[],
-            });
-            results.push({ rowsAffected: result.rowsAffected });
-          }
-          return results;
-        },
-        commit: async () => {
-          await client.execute('COMMIT');
-          open = false;
-        },
-        rollback,
-        close: () => {
-          try {
-            if (open) {
-              open = false;
-              void client.execute('ROLLBACK').catch(() => undefined);
+      () => {
+        state = 'open';
+        return {
+          batch: async (statements) => {
+            const results: { rowsAffected: number }[] = [];
+            for (const statement of statements) {
+              const result = await enqueue(async () => {
+                if (state !== 'open') {
+                  throw new Error('transaction-closed');
+                }
+                return client.execute({
+                  sql: statement.sql,
+                  args: [...statement.args] as InValue[],
+                });
+              });
+              results.push({ rowsAffected: result.rowsAffected });
             }
-          } finally {
-            finish();
-          }
-        },
-      };
-    },
-    async (error: unknown) => {
-      finish();
-      throw error;
-    }
-  );
+            return results;
+          },
+          commit: () =>
+            enqueue(async () => {
+              if (state !== 'open') return;
+              await client.execute('COMMIT');
+              state = 'committed';
+            }),
+          rollback: () =>
+            enqueue(async () => {
+              if (state !== 'open') return;
+              await client.execute('ROLLBACK');
+              state = 'closed';
+            }),
+          close: () =>
+            enqueue(async () => {
+              try {
+                if (state === 'open') {
+                  try {
+                    await client.execute('ROLLBACK');
+                  } catch {
+                    // Release anyway. The next writer cannot share this connection
+                    // with an in-flight statement, and a stuck gate stalls every write.
+                  }
+                  state = 'closed';
+                }
+              } finally {
+                finish();
+              }
+            }),
+        };
+      },
+      async (error: unknown) => {
+        finish();
+        throw error;
+      }
+    );
 };
 
 /** Remote libsql. The interactive transaction is the protocol, not a leaked file handle. */
@@ -247,25 +280,50 @@ const remoteTransaction = async (
   };
   try {
     const tx = await client.transaction(mode);
+    let open = true;
+    const enqueue = createOperationQueue();
     return {
-      batch: async (statements) => {
-        const results = await tx.batch(
-          statements.map((statement) => ({
-            sql: statement.sql,
-            args: [...statement.args] as InValue[],
-          }))
-        );
-        return results.map((result) => ({ rowsAffected: result.rowsAffected }));
-      },
-      commit: () => tx.commit(),
-      rollback: () => tx.rollback(),
-      close: () => {
-        try {
-          tx.close();
-        } finally {
-          finish();
-        }
-      },
+      batch: (statements) =>
+        enqueue(async () => {
+          if (!open) {
+            throw new Error('transaction-closed');
+          }
+          const results = await tx.batch(
+            statements.map((statement) => ({
+              sql: statement.sql,
+              args: [...statement.args] as InValue[],
+            }))
+          );
+          return results.map((result) => ({ rowsAffected: result.rowsAffected }));
+        }),
+      commit: () =>
+        enqueue(async () => {
+          if (!open) return;
+          await tx.commit();
+          open = false;
+        }),
+      rollback: () =>
+        enqueue(async () => {
+          if (!open) return;
+          await tx.rollback();
+          open = false;
+        }),
+      close: () =>
+        enqueue(async () => {
+          try {
+            if (open) {
+              try {
+                await tx.rollback();
+              } catch {
+                // The handle still has to close so the gate can release.
+              }
+              open = false;
+            }
+            tx.close();
+          } finally {
+            finish();
+          }
+        }),
     };
   } catch (error) {
     finish();
@@ -284,7 +342,7 @@ const gatedWriteClient = (
     if (remote) {
       return remoteTransaction(client, mode, release);
     }
-    return sameConnectionTransaction(client, release, before);
+    return beginSameConnectionTransaction(client, release, before);
   },
 });
 

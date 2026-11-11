@@ -3,7 +3,8 @@ import { existsSync, readdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { randomUUID } from 'node:crypto';
-import { createDatabase, openDatabase } from './database.js';
+import type { Client } from '@libsql/client';
+import { beginSameConnectionTransaction, createDatabase, openDatabase } from './database.js';
 
 describe('createDatabase', () => {
   let cleanupPath: string | undefined;
@@ -56,7 +57,7 @@ describe('openDatabase', () => {
         { sql: 'INSERT INTO notes (body) VALUES (?)', args: [`n${index}`] },
       ]);
       await tx.commit();
-      tx.close();
+      await tx.close();
     });
     const reads = Array.from({ length: 40 }, () =>
       database.execute({ sql: 'SELECT COUNT(*) AS n FROM notes' })
@@ -96,7 +97,7 @@ describe('openDatabase', () => {
     const count = await read;
     expect(Number(count.rows[0]?.n)).toBe(0);
     await tx.rollback();
-    tx.close();
+    await tx.close();
     await database.close();
   });
 
@@ -118,7 +119,7 @@ describe('openDatabase', () => {
         { sql: 'INSERT INTO notes (body) VALUES (?)', args: [`n${index}`] },
       ]);
       await tx.commit();
-      tx.close();
+      await tx.close();
     }
 
     const after = readdirSync('/proc/self/fd').length;
@@ -128,5 +129,57 @@ describe('openDatabase', () => {
     });
     expect(Number(count.rows[0]?.n)).toBe(40);
     await database.close();
+  });
+});
+
+describe('beginSameConnectionTransaction', () => {
+  it('holds the write lock until close finishes rolling back', async () => {
+    let releaseRollback: () => void = () => undefined;
+    const rollbackHeld = new Promise<void>((resolve) => {
+      releaseRollback = resolve;
+    });
+    let releases = 0;
+    const client = {
+      execute: async (statement: string | { sql: string }) => {
+        const sql = typeof statement === 'string' ? statement : statement.sql;
+        if (sql === 'ROLLBACK') {
+          await rollbackHeld;
+        }
+        return { rowsAffected: 0, columns: [], rows: [] };
+      },
+    } as unknown as Client;
+
+    const tx = await beginSameConnectionTransaction(client, () => {
+      releases += 1;
+    });
+    await tx.batch([{ sql: 'INSERT INTO notes (body) VALUES (?)', args: ['ghost'] }]);
+    const closing = tx.close();
+    await Promise.resolve();
+
+    expect(releases).toBe(0);
+    releaseRollback();
+    await closing;
+    expect(releases).toBe(1);
+  });
+
+  it('releases the write lock when rollback fails', async () => {
+    let releases = 0;
+    const client = {
+      execute: async (statement: string | { sql: string }) => {
+        const sql = typeof statement === 'string' ? statement : statement.sql;
+        if (sql === 'ROLLBACK') {
+          throw new Error('rollback failed');
+        }
+        return { rowsAffected: 0, columns: [], rows: [] };
+      },
+    } as unknown as Client;
+
+    const tx = await beginSameConnectionTransaction(client, () => {
+      releases += 1;
+    });
+    await tx.batch([{ sql: 'INSERT INTO notes (body) VALUES (?)', args: ['ghost'] }]);
+    await tx.close();
+
+    expect(releases).toBe(1);
   });
 });

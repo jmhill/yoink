@@ -1,5 +1,5 @@
 import { errAsync, type ResultAsync } from 'neverthrow';
-import type { NoteListItem } from '@yoink/api-contracts';
+import type { NoteListItem } from '../../domain/model/note.js';
 import type { ListNotesQuery } from '../../domain/messages/note-queries.js';
 import { projectNotFoundError, type ListNotesError } from '../../domain/messages/note-errors.js';
 import { resolveListLimit } from '../../../../kernel/listing/domain/list-kind.js';

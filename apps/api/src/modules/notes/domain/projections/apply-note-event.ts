@@ -1,4 +1,4 @@
-import type { Note, NoteListItem } from '@yoink/api-contracts';
+import type { Note, NoteListItem } from '../model/note.js';
 import type { NoteCreated, NoteUpdated } from '../messages/events.js';
 import { noteExcerpt } from '../rules/parse-note-fields.js';
 

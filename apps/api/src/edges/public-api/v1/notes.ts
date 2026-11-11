@@ -4,6 +4,11 @@ import { noteOrpcContract } from '@yoink/api-contracts/orpc';
 import { publicApiV1Contract } from '@yoink/api-contracts/public-api/v1';
 import { toNoteListBody } from '../../_shared/http-listed-page.js';
 import { openApiHandlerOptions } from '../../_shared/orpc/handler-options.js';
+import {
+  toContractNote,
+  toContractNoteChangePage,
+  toContractNoteListItem,
+} from './map-note-document.js';
 import type { OrpcHttpContext } from '../../_shared/orpc/http-context.js';
 import type { Notes } from '../../../modules/notes/index.js';
 import { noteRequestValidationError } from './note-http-errors.js';
@@ -33,7 +38,13 @@ export const createNoteHandlers = (deps: NoteEdgeDependencies) => {
       cursor: input.cursor,
     });
     return result.match(
-      (page) => toNoteListBody(page),
+      (page) =>
+        toNoteListBody({
+          items: page.items.map(toContractNoteListItem),
+          hasMore: page.hasMore,
+          nextCursor: page.nextCursor,
+          total: page.total,
+        }),
       (error) => {
         throw mapListNotesError(error);
       },
@@ -46,7 +57,7 @@ export const createNoteHandlers = (deps: NoteEdgeDependencies) => {
       organizationId: context.request.authContext.organizationId,
     });
     return result.match(
-      (note) => note,
+      (note) => toContractNote(note),
       (error) => {
         throw mapGetNoteError(error);
       },
@@ -61,7 +72,7 @@ export const createNoteHandlers = (deps: NoteEdgeDependencies) => {
       actor: context.request.authContext.actor,
     });
     return result.match(
-      ({ view }) => view,
+      ({ view }) => toContractNote(view),
       (error) => {
         throw mapCreateNoteError(error);
       },
@@ -78,7 +89,7 @@ export const createNoteHandlers = (deps: NoteEdgeDependencies) => {
       actor: context.request.authContext.actor,
     });
     return result.match(
-      ({ view }) => view,
+      ({ view }) => toContractNote(view),
       (error) => {
         throw mapUpdateNoteError(error);
       },
@@ -92,7 +103,7 @@ export const createNoteHandlers = (deps: NoteEdgeDependencies) => {
       cursor: input.cursor,
     });
     return result.match(
-      (page) => page,
+      (page) => toContractNoteChangePage(page),
       (error) => {
         throw mapListNotesChangedError(error);
       },
@@ -111,7 +122,7 @@ export const createNoteHandlers = (deps: NoteEdgeDependencies) => {
     return result.match(
       ({ view, created }) => ({
         status: created ? 201 : 200,
-        body: view,
+        body: toContractNote(view),
       }),
       (error) => {
         throw mapImportNoteError(error);

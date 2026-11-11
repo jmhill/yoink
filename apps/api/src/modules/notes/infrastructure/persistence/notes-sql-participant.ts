@@ -1,5 +1,5 @@
 import type { GuardedStatement, SqlParticipant } from '../../../../kernel/unit-of-work.js';
-import type { Note } from '@yoink/api-contracts';
+import type { Note } from '../../domain/model/note.js';
 import type { NoteChangePlan } from '../../domain/projections/plan-note-change.js';
 
 const isNote = (value: unknown): value is Note =>

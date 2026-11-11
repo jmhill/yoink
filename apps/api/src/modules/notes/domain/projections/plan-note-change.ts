@@ -1,4 +1,4 @@
-import type { Note } from '@yoink/api-contracts';
+import type { Note } from '../model/note.js';
 import type { Actor } from '../../../../kernel/auth-context.js';
 import { applyNoteCreated, applyNoteUpdated } from './apply-note-event.js';
 import type { NoteCreated, NoteDeleted, NoteUpdated } from '../messages/events.js';

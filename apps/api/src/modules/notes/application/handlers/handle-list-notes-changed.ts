@@ -1,4 +1,4 @@
-import type { NoteChange, NoteChangePage } from '@yoink/api-contracts';
+import type { NoteChange, NoteChangePage } from '../../domain/model/note.js';
 import type { ResultAsync } from 'neverthrow';
 import type { ListNotesChangedQuery } from '../../domain/messages/note-queries.js';
 import type { ListNotesChangedError } from '../../domain/messages/note-errors.js';

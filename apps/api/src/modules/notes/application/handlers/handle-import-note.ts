@@ -1,5 +1,5 @@
 import { errAsync, okAsync, type ResultAsync } from 'neverthrow';
-import type { Note } from '@yoink/api-contracts';
+import type { Note } from '../../domain/model/note.js';
 import type { UnitOfWork } from '../../../../kernel/unit-of-work.js';
 import type { ImportNoteFromObsidianCommand } from '../../domain/messages/note-commands.js';
 import type { NoteCreated, NoteUpdated } from '../../domain/messages/events.js';

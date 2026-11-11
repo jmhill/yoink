@@ -6,6 +6,7 @@ import { webHistoryContract } from './history-contract.js';
 import { webInboxContract } from './contract.js';
 import { webListsContract } from './lists-contract.js';
 import { webProcessContract } from './process-contract.js';
+import { webReviewContract } from './review-contract.js';
 import { webProjectsContract } from './projects-contract.js';
 import { webSettingsContract } from './settings-contract.js';
 import { webTasksContract } from './tasks-contract.js';
@@ -175,6 +176,18 @@ describe('web process contract', () => {
     expect(listed.some((procedure) => procedure.path.includes('web-api'))).toBe(false);
     expect(listed.some((procedure) => procedure.path.startsWith('/api'))).toBe(false);
     expect(listed.some((procedure) => procedure.path === '/inbox')).toBe(false);
+  });
+});
+
+describe('web review contract', () => {
+  it('is the review list and done list, on the resource path', () => {
+    const listed = procedures(webReviewContract);
+    expect(listed).toEqual([
+      { key: 'list', method: 'GET', path: '/review' },
+      { key: 'done', method: 'GET', path: '/review/done' },
+    ]);
+    expect(listed.some((procedure) => procedure.path.includes('web-api'))).toBe(false);
+    expect(listed.some((procedure) => procedure.path.startsWith('/api'))).toBe(false);
   });
 });
 

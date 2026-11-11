@@ -6,7 +6,7 @@ import type {
   ReviewProject as ContractReviewProject,
   Task as ContractTask,
 } from '@yoink/api-contracts';
-import type { ListedPage } from '../../../kernel/listing/domain/listed-page.js';
+import type { ListedPage } from '../../kernel/listing/domain/listed-page.js';
 import type {
   RankedReviewProject,
   ReviewCounts,
@@ -14,13 +14,14 @@ import type {
   ReviewNextAction,
   ReviewProjectDocument,
   ReviewTaskDocument,
-} from '../../../modules/review/index.js';
+} from '../../modules/review/index.js';
 
 /**
- * Copy a review document onto the contract review page.
+ * Copy a review document onto the contract review page and done page.
  * Project and task field order matches the row parsers, so a mapped row
  * keeps the JSON key order the module returns. Optional fields stay absent
- * when the document omits them. Review has no HTTP command.
+ * when the document omits them. The public API and the web edge both use
+ * this copy. Neither sorts the page. Review has no HTTP command.
  */
 const toContractProject = (project: ReviewProjectDocument): ContractProject => ({
   id: project.id,

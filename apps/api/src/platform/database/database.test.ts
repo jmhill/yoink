@@ -101,6 +101,75 @@ describe('openDatabase', () => {
     await database.close();
   });
 
+  it('keeps the event loop running when a write overlaps an open transaction', async () => {
+    const root = join(tmpdir(), `yoink-db-${randomUUID()}`);
+    cleanupPath = root;
+    const { database, writeClient } = openDatabase({
+      type: 'file',
+      path: join(root, 'captures.db'),
+    });
+    await database.execute({
+      sql: 'CREATE TABLE notes (id INTEGER PRIMARY KEY, body TEXT)',
+    });
+
+    const tx = await writeClient.transaction('write');
+    await tx.batch([{ sql: 'INSERT INTO notes (body) VALUES (?)', args: ['held'] }]);
+    const batch = database.batch(
+      [{ sql: 'INSERT INTO notes (body) VALUES (?)', args: ['other'] }],
+      'write'
+    );
+    const single = database.execute({
+      sql: 'INSERT INTO notes (body) VALUES (?)',
+      args: ['single'],
+    });
+    // A synchronous busy wait settles these before the timer can run.
+    // The gate wait has to leave the loop free while the transaction is open.
+    const winner = await Promise.race([
+      Promise.allSettled([batch, single]).then(() => 'writes' as const),
+      new Promise<'tick'>((resolve) => {
+        setTimeout(() => resolve('tick'), 200);
+      }),
+    ]);
+
+    expect(winner).toBe('tick');
+    await tx.commit();
+    await tx.close();
+    await Promise.all([batch, single]);
+    const rows = await database.execute({
+      sql: 'SELECT body FROM notes ORDER BY id',
+    });
+    expect(rows.rows.map((row) => row.body)).toEqual(['held', 'other', 'single']);
+    await database.close();
+  });
+
+  it('closes while a write is waiting on an open transaction', async () => {
+    const root = join(tmpdir(), `yoink-db-${randomUUID()}`);
+    cleanupPath = root;
+    const { database, writeClient } = openDatabase({
+      type: 'file',
+      path: join(root, 'captures.db'),
+    });
+    await database.execute({
+      sql: 'CREATE TABLE notes (id INTEGER PRIMARY KEY, body TEXT)',
+    });
+
+    const tx = await writeClient.transaction('write');
+    await tx.batch([{ sql: 'INSERT INTO notes (body) VALUES (?)', args: ['held'] }]);
+    const waiting = database.execute({
+      sql: 'INSERT INTO notes (body) VALUES (?)',
+      args: ['late'],
+    });
+    const started = database.close();
+    await tx.rollback();
+    await tx.close();
+    await Promise.race([
+      Promise.all([waiting.then(() => undefined, () => undefined), started]),
+      new Promise<never>((_resolve, reject) => {
+        setTimeout(() => reject(new Error('close waited on the write gate')), 1000);
+      }),
+    ]);
+  });
+
   it('does not keep a native connection for every write transaction', async () => {
     const root = join(tmpdir(), `yoink-db-${randomUUID()}`);
     cleanupPath = root;

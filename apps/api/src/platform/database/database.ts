@@ -97,6 +97,31 @@ const mapResult = (result: {
   lastInsertRowid: result.lastInsertRowid ?? undefined,
 });
 
+const leadingVerb = (sql: string): string => {
+  const stripped = sql
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/--[^\n]*/g, ' ')
+    .trim();
+  return /^[a-z]+/i.exec(stripped)?.[0]?.toLowerCase() ?? '';
+};
+
+/**
+ * SELECT, EXPLAIN, and PRAGMA stay on the query connection. A `WITH` that
+ * inserts, updates, or deletes does not: it commits.
+ */
+const readsOnQueryConnection = (sql: string): boolean => {
+  const verb = leadingVerb(sql);
+  if (verb === 'select' || verb === 'explain' || verb === 'pragma') return true;
+  if (verb === 'with') return !/\b(insert|update|delete|replace)\b/i.test(sql);
+  return false;
+};
+
+const sharesWriteGate = (query: { sql: string; access?: 'read' | 'write' }): boolean => {
+  if (query.access === 'read') return false;
+  if (query.access === 'write') return true;
+  return !readsOnQueryConnection(query.sql);
+};
+
 const journalWal = (client: Client): (() => Promise<void>) => {
   let pending: Promise<void> | undefined;
   return () => {
@@ -351,6 +376,15 @@ const gatedWriteClient = (
  * own gate, so a signup read is not queued behind every open commit.
  * `:memory:` cannot do that: a second client is a different database, so
  * memory and remote share one connection and one gate.
+ *
+ * A write still takes the write gate before it touches the read connection.
+ * libsql runs `execute` and `batch` synchronously. While the write connection
+ * holds `BEGIN IMMEDIATE`, that call sits in SQLite's busy handler and the
+ * process does nothing else, including the commit that would free the lock.
+ * Each overlapped write costs one busy timeout. The gate wait is a promise.
+ * The SQL stays on the read connection so `PRAGMA foreign_keys` still applies
+ * to the next batch on that connection. A processing commit and a trash
+ * commit are the same kind of open transaction.
  */
 export const openDatabase = (
   config: DatabaseConfig,
@@ -378,15 +412,30 @@ export const openDatabase = (
   const readGate = createClientGate();
   const writeGate = createClientGate();
   const database = databaseFrom(readClient, readGate, call, journalWal(readClient));
+  const afterWriteGate = <T>(run: () => Promise<T>): Promise<T> => writeGate.exclusive(run);
   return {
     database: {
-      execute: database.execute,
-      batch: database.batch,
-      migrate: database.migrate,
+      execute: (query) => {
+        const run = () => database.execute(query);
+        return sharesWriteGate(query) ? afterWriteGate(run) : run();
+      },
+      batch: (queries, mode = 'write') => {
+        const run = () => database.batch(queries, mode);
+        return mode === 'read' ? run() : afterWriteGate(run);
+      },
+      migrate: (queries) => {
+        const migrate = database.migrate;
+        if (migrate === undefined) {
+          return Promise.reject(new Error('migrate is unavailable'));
+        }
+        return afterWriteGate(() => migrate(queries));
+      },
       close: async () => {
-        await database.close();
+        // Write gate first. A write already holds it only until its read-gate
+        // turn, and close must not take the read gate while a write holds this one.
         const release = await writeGate.acquire();
         try {
+          await database.close();
           writeNative.close();
         } finally {
           release();

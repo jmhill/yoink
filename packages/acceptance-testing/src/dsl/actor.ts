@@ -2255,10 +2255,19 @@ export type BrowserActorOperations = {
   pressProcessKey(key: 't' | 'p' | 's' | 'z' | 'Delete' | 'Backspace'): Promise<void>;
 
   /**
-   * Press Delete, hold the trash POST so the next card is showing while
-   * the first save is still in flight, press Delete again, then release.
+   * Press Delete and hold the trash POST. While that response is
+   * unreleased, the process key lock is present and the next card is
+   * already showing. A second Delete must not send another trash POST
+   * or change that card. Then release the response.
    */
   pressProcessDeleteWhileTrashHeld(): Promise<void>;
+
+  /**
+   * Dispatch two Delete keydowns in one turn, before React drops the
+   * listener. Hold the trash POST. Exactly one trash POST is sent and
+   * the next card stays current. Then release the response.
+   */
+  pressProcessDeleteTwiceInOneTurn(): Promise<void>;
 
   /**
    * Press Delete against a 500 trash POST, wait for that 500 and for

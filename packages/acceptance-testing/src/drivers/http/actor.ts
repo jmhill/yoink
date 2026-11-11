@@ -2671,6 +2671,10 @@ export const createHttpActor = (
       throw new UnsupportedOperationError('pressProcessDeleteWhileTrashHeld', 'http');
     },
 
+    async pressProcessDeleteTwiceInOneTurn(): Promise<void> {
+      throw new UnsupportedOperationError('pressProcessDeleteTwiceInOneTurn', 'http');
+    },
+
     async pressProcessDeleteAfterTrashError(): Promise<void> {
       throw new UnsupportedOperationError('pressProcessDeleteAfterTrashError', 'http');
     },

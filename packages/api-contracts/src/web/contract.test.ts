@@ -5,6 +5,7 @@ import { webAuthContract } from './auth-contract.js';
 import { webHistoryContract } from './history-contract.js';
 import { webInboxContract } from './contract.js';
 import { webListsContract } from './lists-contract.js';
+import { webProcessContract } from './process-contract.js';
 import { webProjectsContract } from './projects-contract.js';
 import { webSettingsContract } from './settings-contract.js';
 import { webTasksContract } from './tasks-contract.js';
@@ -151,6 +152,29 @@ describe('web history contract', () => {
     ]);
     expect(listed.some((procedure) => procedure.path.includes('web-api'))).toBe(false);
     expect(listed.some((procedure) => procedure.path.startsWith('/api'))).toBe(false);
+  });
+});
+
+describe('web process contract', () => {
+  it('is process, trash, and snooze, on the resource path', () => {
+    const listed = procedures(webProcessContract);
+    expect(listed).toEqual([
+      { key: 'trash', method: 'POST', path: '/captures/{id}/trash' },
+      { key: 'restore', method: 'POST', path: '/captures/{id}/restore' },
+      { key: 'snooze', method: 'POST', path: '/captures/{id}/snooze' },
+      { key: 'unsnooze', method: 'POST', path: '/captures/{id}/unsnooze' },
+      { key: 'delete', method: 'DELETE', path: '/captures/{id}' },
+      { key: 'emptyTrash', method: 'POST', path: '/captures/trash/empty' },
+      { key: 'process', method: 'POST', path: '/captures/{id}/process' },
+      {
+        key: 'processToProject',
+        method: 'POST',
+        path: '/captures/{id}/process-to-project',
+      },
+    ]);
+    expect(listed.some((procedure) => procedure.path.includes('web-api'))).toBe(false);
+    expect(listed.some((procedure) => procedure.path.startsWith('/api'))).toBe(false);
+    expect(listed.some((procedure) => procedure.path === '/inbox')).toBe(false);
   });
 });
 

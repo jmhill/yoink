@@ -7,7 +7,7 @@ import {
   type Task,
   type TaskListPage,
 } from '@yoink/api-contracts';
-import { captureClient, webTaskClient } from '@/api/client';
+import { inboxClient, webTaskClient } from '@/api/client';
 
 export const LOAD_MORE_TEST_ID = 'load-more';
 
@@ -176,10 +176,9 @@ export const useCompletedTaskPages = (enabled: boolean) => {
 };
 
 /**
- * Paged history (Trash). This is the captures list, not a history route.
- * It stays on the alias until the captures screen moves. Query keys stay
- * under the live-update collection prefixes so #125 cancel/invalidate still
- * match.
+ * Paged trash. This is the captures list, not a history route. It uses the
+ * inbox list on `/web-api`. Query keys stay under the live-update collection
+ * prefixes so #125 cancel/invalidate still match.
  */
 export const useTrashedCapturePages = (enabled: boolean) => {
   const query = useInfiniteQuery({
@@ -188,7 +187,7 @@ export const useTrashedCapturePages = (enabled: boolean) => {
     initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam }) => {
       const cursor = historyCursor(pageParam);
-      return captureClient.list({
+      return inboxClient.list({
         status: 'trashed',
         limit: HISTORY_PAGE_DEFAULT,
         ...(cursor === undefined ? {} : { cursor }),

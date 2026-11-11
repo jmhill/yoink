@@ -112,20 +112,27 @@ import {
   type WalkthroughViewport,
 } from './walkthrough-screenshots.js';
 
+const captureCommandPath = (url: string): string => {
+  try {
+    return new URL(url).pathname;
+  } catch {
+    return '';
+  }
+};
+
+/** Process, trash, and snooze posts. The process screen uses `/web-api`. The Inbox screen keeps `/api`. */
+const isCaptureCommand = (path: string, suffix: string): boolean =>
+  (path.startsWith('/api/captures/') || path.startsWith('/web-api/captures/')) &&
+  path.endsWith(suffix);
+
 const isProcessToTaskPost = (url: string): boolean =>
-  /\/api\/captures\/[^/]+\/process$/.test(new URL(url).pathname);
+  isCaptureCommand(captureCommandPath(url), '/process');
 
 const isProcessToProjectPost = (url: string): boolean =>
-  /\/api\/captures\/[^/]+\/process-to-project$/.test(new URL(url).pathname);
+  isCaptureCommand(captureCommandPath(url), '/process-to-project');
 
-const isCaptureTrashPost = (url: URL): boolean => {
-  const path = url.pathname;
-  return (
-    path.startsWith('/api/captures/') &&
-    path.endsWith('/trash') &&
-    !path.includes('/trash/empty')
-  );
-};
+const isCaptureTrashPost = (url: URL): boolean =>
+  isCaptureCommand(url.pathname, '/trash') && !url.pathname.endsWith('/trash/empty');
 
 /**
  * Playwright evaluate callbacks run in the page, but this package's

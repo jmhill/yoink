@@ -6,6 +6,7 @@ import {
   httpStatusOf,
   inboxClient,
   listClient,
+  processClient,
   organizationClient,
   settingsClient,
   projectClient,
@@ -274,6 +275,30 @@ describe('web OpenAPI client', () => {
     expect(calls[0]?.url.startsWith(`/web-api/projects/${projectId}/history?`)).toBe(true);
     expect(calls[1]?.url.startsWith(`/web-api/projects/${projectId}/finished?`)).toBe(true);
     expect(calls[2]?.url.startsWith(`/api/projects/${projectId}/history?`)).toBe(true);
+  });
+
+  it('trashes on /web-api and leaves the alias capture client', async () => {
+    const id = '550e8400-e29b-41d4-a716-446655440099';
+    const calls: string[] = [];
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
+      calls.push(`${init.method ?? 'GET'} ${url}`);
+      return jsonResponse(200, {
+        id,
+        organizationId: '550e8400-e29b-41d4-a716-446655440001',
+        createdById: '550e8400-e29b-41d4-a716-446655440002',
+        content: 'Buy milk',
+        status: 'trashed',
+        capturedAt: '2024-06-15T12:00:00.000Z',
+      });
+    });
+
+    await processClient.trash({ id });
+    await captureClient.trash({ id });
+
+    expect(calls).toEqual([
+      `POST /web-api/captures/${id}/trash`,
+      `POST /api/captures/${id}/trash`,
+    ]);
   });
 
   it('accepts a bodyless 204 when deleting a task', async () => {

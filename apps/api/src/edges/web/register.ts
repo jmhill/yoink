@@ -12,6 +12,7 @@ import { WEB_API_PREFIX, dispatchWebApi } from './dispatch.js';
 import { createWebHistoryHandlers, type WebHistoryDependencies } from './history.js';
 import { createWebInboxHandlers, type WebInboxCaptures } from './inbox.js';
 import { webRequestLog } from './log-context.js';
+import { createWebProcessHandlers, type WebProcessDependencies } from './process.js';
 import {
   createWebProjectPageHandlers,
   type WebProjectPageDependencies,
@@ -45,6 +46,11 @@ export type WebApiDependencies = {
    * the same history queries at their current paths.
    */
   history?: WebHistoryDependencies;
+  /**
+   * Process, trash, and snooze. Public v1 and the `/api` alias keep the same
+   * commands. Inbox list and create stay on `captures`.
+   */
+  process?: WebProcessDependencies;
   /**
    * Work screen and work lists. Public v1 and the `/api` alias keep the
    * same Now, due, and work-list queries. This edge does not sort them.
@@ -137,6 +143,7 @@ const mountWebAuth = async (
  * Inbox list and create, tasks and lists when `tasksLists` is set,
  * the project page and staged import when `projectPage` is set,
  * project history and finished tasks when `history` is set,
+ * process, trash, and snooze when `process` is set,
  * the Work screen and work lists when `work` is set,
  * settings and organizations when `settings` is set,
  * and login, signup, session, passkeys, and join when `auth` is set.
@@ -207,6 +214,30 @@ export const registerWebApi = async (
     };
     at('GET', '/projects/:id/history');
     at('GET', '/projects/:id/finished');
+  }
+
+  if (deps.process !== undefined) {
+    const processRouter = createWebProcessHandlers(deps.process);
+    const commands = new OpenAPIHandler(processRouter, yoinkOpenApiHandlerOptions);
+    const project = new OpenAPIHandler(
+      processRouter,
+      openApiHandlerOptions(projectPageRequestValidationError)
+    );
+    const at = (
+      handler: OpenAPIHandler<OrpcHttpContext>,
+      method: WebMethod | WebMethod[],
+      path: string
+    ) => {
+      mount(app, handler, method, `${WEB_API_PREFIX}${path}`, deps.combinedAuth);
+    };
+    at(commands, 'POST', '/captures/trash/empty');
+    at(commands, 'POST', '/captures/:id/trash');
+    at(commands, 'POST', '/captures/:id/restore');
+    at(commands, 'POST', '/captures/:id/snooze');
+    at(commands, 'POST', '/captures/:id/unsnooze');
+    at(commands, 'DELETE', '/captures/:id');
+    at(commands, 'POST', '/captures/:id/process');
+    at(project, 'POST', '/captures/:id/process-to-project');
   }
 
   if (deps.work !== undefined) {

@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@yoink/ui-base/components/dialog';
-import { captureClient, isNetworkFailure } from '@/api/client';
+import { isNetworkFailure, processClient } from '@/api/client';
 import { cancelLiveQueries, invalidateLiveQueries, isBlockingQueryFailure } from '@/lib/live-query';
 import {
   LoadMoreButton,
@@ -61,7 +61,7 @@ function TrashPage() {
   } = useTrashedCapturePages(true);
 
   const restoreMutation = useMutation({
-    mutationFn: (input: { id: string }) => captureClient.restore(input),
+    mutationFn: (input: { id: string }) => processClient.restore(input),
     onMutate: async ({ id }) => {
       // Cancel in-flight queries to prevent overwrites
       await cancelLiveQueries(queryClient);
@@ -123,7 +123,7 @@ function TrashPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (input: { id: string }) => captureClient.delete(input),
+    mutationFn: (input: { id: string }) => processClient.delete(input),
     onMutate: async ({ id }) => {
       await cancelLiveQueries(queryClient);
 
@@ -163,8 +163,8 @@ function TrashPage() {
   });
 
   const emptyTrashMutation = useMutation({
-    mutationFn: (input: Parameters<typeof captureClient.emptyTrash>[0]) =>
-      captureClient.emptyTrash(input),
+    mutationFn: (input: Parameters<typeof processClient.emptyTrash>[0]) =>
+      processClient.emptyTrash(input),
     onMutate: async () => {
       await cancelLiveQueries(queryClient);
 

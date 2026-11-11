@@ -255,11 +255,16 @@ export const createApp = async (deps: AppDependencies) => {
   };
 
   // Inbox, tasks and lists, the project page and staged import, project
-  // history and finished tasks, the Work screen, settings, and auth when
-  // signup exists. Notes and review stay on the /api alias.
+  // history and finished tasks, process, trash, snooze, the Work screen,
+  // settings, and auth when signup exists. Notes and review stay on the
+  // /api alias.
   await registerWebApi(app, {
     captures: deps.captures,
     combinedAuth: authMiddleware,
+    process: {
+      captures: deps.captures,
+      captureProcessingService: deps.captureProcessingService,
+    },
     tasksLists: {
       listHandlers: deps.listHandlers,
       taskHandlers: deps.taskHandlers,

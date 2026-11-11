@@ -6,9 +6,10 @@ import { Card, CardContent } from '@yoink/ui-base/components/card';
 import { PILE_SAFETY_CAP } from '@yoink/api-contracts';
 import {
   authClient,
-  captureClient,
+  inboxClient,
   listClient,
   organizationClient,
+  processClient,
   projectClient,
 } from '@/api/client';
 import { ConfirmProposalSheet } from '@/components/confirm-proposal-sheet';
@@ -58,7 +59,14 @@ function ProcessPage() {
     handleConfirmPromote,
     handleOpenProjectSheet,
     handleConfirmProject,
-  } = useInboxTriage();
+  } = useInboxTriage({
+    trash: (input) => processClient.trash(input),
+    restore: (input) => processClient.restore(input),
+    snooze: (input) => processClient.snooze(input),
+    unsnooze: (input) => processClient.unsnooze(input),
+    process: (input) => processClient.process(input),
+    processToProject: (input) => processClient.processToProject(input),
+  });
   const desktop = useDesktopLayout();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const [snoozeOpen, setSnoozeOpen] = useState(false);
@@ -113,7 +121,7 @@ function ProcessPage() {
   const { data: snoozedData } = useQuery({
     queryKey: ['captures', 'snoozed'],
     queryFn: () =>
-      captureClient.list({ status: 'inbox', snoozed: true, limit: PILE_SAFETY_CAP }),
+      inboxClient.list({ status: 'inbox', snoozed: true, limit: PILE_SAFETY_CAP }),
   });
 
   const captures = inboxQuery.data?.captures ?? [];

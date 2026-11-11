@@ -1114,7 +1114,7 @@ describe('migration ownership', () => {
 
   it('matches the checked-in sequence and leaves 001 through the legacy cutoff exempt', () => {
     const indexed = migrations.map((migration) => migration.version).sort((left, right) => left - right);
-    // 046 is this branch (M5.8b). 047 is on main (#383, M5.6).
+    // 046 is this branch (M5.8b). 047 is on main (#383 and #387, M5.6).
     expect(indexed).toEqual(
       Array.from({ length: LEGACY_MIGRATION_VERSION + 4 }, (_, index) => index + 1)
     );

@@ -12,9 +12,33 @@ const readString = (value: unknown): string | null =>
   typeof value === 'string' && value.length > 0 ? value : null;
 
 /**
- * Resolution order stays: stored notes_mirror_bot_user_id, then the env
- * fallback, then the named agent. The membership lookup is access's.
- * The organizations column stays until M5.8c.
+ * Insert a designation, or fill one that is still empty. An existing id stays.
+ * `organizations.notes_mirror_bot_user_id` is not named. It stays until M5.8d.
+ */
+const storeMirrorBot = (
+  db: Database,
+  organizationId: string,
+  userId: string,
+  message: string
+) =>
+  ResultAsync.fromPromise(
+    db.execute({
+      sql: `
+        INSERT INTO notes_settings (organization_id, notes_mirror_bot_user_id)
+        VALUES (?, ?)
+        ON CONFLICT (organization_id) DO UPDATE
+        SET notes_mirror_bot_user_id = excluded.notes_mirror_bot_user_id
+        WHERE notes_settings.notes_mirror_bot_user_id IS NULL
+      `,
+      args: [organizationId, userId],
+    }),
+    (cause) => storageError(message, cause)
+  ).map(() => undefined);
+
+/**
+ * Resolution order stays: stored notes_settings id, then the env fallback,
+ * then the named agent. The env fallback does not write. The membership
+ * lookup is access's. The organizations column stays until M5.8d and is not read.
  */
 export const loadNotesMirrorBotFromSqlite =
   (
@@ -25,7 +49,7 @@ export const loadNotesMirrorBotFromSqlite =
   (organizationId) =>
     ResultAsync.fromPromise(
       db.execute({
-        sql: `SELECT notes_mirror_bot_user_id FROM organizations WHERE id = ?`,
+        sql: `SELECT notes_mirror_bot_user_id FROM notes_settings WHERE organization_id = ?`,
         args: [organizationId],
       }),
       (cause) => storageError('Failed to load notes-mirror bot', cause)
@@ -41,17 +65,9 @@ export const loadNotesMirrorBotFromSqlite =
         if (!userId) {
           return okAsync(null);
         }
-        return ResultAsync.fromPromise(
-          db.execute({
-            sql: `
-              UPDATE organizations
-              SET notes_mirror_bot_user_id = ?
-              WHERE id = ? AND notes_mirror_bot_user_id IS NULL
-            `,
-            args: [userId, organizationId],
-          }),
-          (cause) => storageError('Failed to store notes-mirror bot', cause)
-        ).map(() => userId);
+        return storeMirrorBot(db, organizationId, userId, 'Failed to store notes-mirror bot').map(
+          () => userId
+        );
       });
     });
 
@@ -61,15 +77,10 @@ export const designateNotesMirrorBotFromSqlite =
     if (input.name !== NOTES_MIRROR_BOT_NAME) {
       return okAsync(undefined);
     }
-    return ResultAsync.fromPromise(
-      db.execute({
-        sql: `
-          UPDATE organizations
-          SET notes_mirror_bot_user_id = ?
-          WHERE id = ? AND notes_mirror_bot_user_id IS NULL
-        `,
-        args: [input.userId, input.organizationId],
-      }),
-      (cause) => storageError('Failed to designate notes-mirror bot', cause)
-    ).map(() => undefined);
+    return storeMirrorBot(
+      db,
+      input.organizationId,
+      input.userId,
+      'Failed to designate notes-mirror bot'
+    );
   };

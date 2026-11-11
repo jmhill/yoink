@@ -14,25 +14,7 @@ import type { TableOwnershipAllowlistEntry } from './table-ownership.js';
  * M5.7 moved notes' user, membership, and project lookups onto ports.
  * History writes the note timeline from the integration event.
  * M4.4 removed existsClause. M5.10-history moved task, project, note, and
- * user name reads onto the modules that own those tables.
+ * user name reads onto the modules that own those tables. M5.8c moved the
+ * mirror-bot read and write onto `notes_settings`. The list is empty.
  */
-export const TABLE_OWNERSHIP_ALLOWLIST = [
-  // M5.8c moves organizations.notes_mirror_bot_user_id onto notes_settings.
-  // M5.8
-  {
-    path: 'modules/notes/infrastructure/persistence/load-notes-mirror-bot.ts',
-    keyword: 'FROM',
-    table: 'organizations',
-    count: 1,
-    removedBy: 'M5.8',
-  },
-  // M5.8
-  {
-    path: 'modules/notes/infrastructure/persistence/load-notes-mirror-bot.ts',
-    keyword: 'UPDATE',
-    table: 'organizations',
-    count: 2,
-    removedBy: 'M5.8',
-  },
-
-] as const satisfies readonly TableOwnershipAllowlistEntry[];
+export const TABLE_OWNERSHIP_ALLOWLIST: readonly TableOwnershipAllowlistEntry[] = [];

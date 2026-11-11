@@ -143,9 +143,10 @@ const historyCursor = (pageParam: unknown): string | undefined =>
   typeof pageParam === 'string' && pageParam.length > 0 ? pageParam : undefined;
 
 /**
- * Paged history (Done). First-class pile reads do not use this —
- * those send one request up to the safety cap. Query keys stay under the
- * live-update collection prefixes so #125 cancel/invalidate still match.
+ * Paged history (Done). Already on `/web-api/tasks`. First-class pile reads
+ * do not use this — those send one request up to the safety cap. Query keys
+ * stay under the live-update collection prefixes so #125 cancel/invalidate
+ * still match.
  */
 export const useCompletedTaskPages = (enabled: boolean) => {
   const query = useInfiniteQuery({
@@ -175,8 +176,10 @@ export const useCompletedTaskPages = (enabled: boolean) => {
 };
 
 /**
- * Paged history (Trash). Query keys stay under the live-update collection
- * prefixes so #125 cancel/invalidate still match.
+ * Paged history (Trash). This is the captures list, not a history route.
+ * It stays on the alias until the captures screen moves. Query keys stay
+ * under the live-update collection prefixes so #125 cancel/invalidate still
+ * match.
  */
 export const useTrashedCapturePages = (enabled: boolean) => {
   const query = useInfiniteQuery({

@@ -2,6 +2,7 @@ import { ProcedureContract } from '@orpc/contract';
 import { getOpenAPIMeta } from '@orpc/openapi';
 import { describe, expect, it } from 'vitest';
 import { webAuthContract } from './auth-contract.js';
+import { webHistoryContract } from './history-contract.js';
 import { webInboxContract } from './contract.js';
 import { webListsContract } from './lists-contract.js';
 import { webProjectsContract } from './projects-contract.js';
@@ -136,6 +137,18 @@ describe('web projects contract', () => {
     ]);
     expect(listed.some((procedure) => procedure.path.includes('history'))).toBe(false);
     expect(listed.some((procedure) => procedure.path.includes('notes'))).toBe(false);
+    expect(listed.some((procedure) => procedure.path.includes('web-api'))).toBe(false);
+    expect(listed.some((procedure) => procedure.path.startsWith('/api'))).toBe(false);
+  });
+});
+
+describe('web history contract', () => {
+  it('is project history and finished tasks, on the resource path', () => {
+    const listed = procedures(webHistoryContract);
+    expect(listed).toEqual([
+      { key: 'listProjectHistory', method: 'GET', path: '/projects/{id}/history' },
+      { key: 'listFinishedTasks', method: 'GET', path: '/projects/{id}/finished' },
+    ]);
     expect(listed.some((procedure) => procedure.path.includes('web-api'))).toBe(false);
     expect(listed.some((procedure) => procedure.path.startsWith('/api'))).toBe(false);
   });

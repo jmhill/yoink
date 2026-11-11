@@ -3,7 +3,7 @@ import { implement } from '@orpc/server';
 import { projectOrpcContract } from '@yoink/api-contracts/orpc';
 import { publicApiV1Contract } from '@yoink/api-contracts/public-api/v1';
 import { toProjectListBody, toTaskListBody } from '../../_shared/http-listed-page.js';
-import { toContractHistoryPage, toHistoryTaskListBody } from './map-history-document.js';
+import { toContractHistoryPage, toHistoryTaskListBody } from '../../_shared/map-history-document.js';
 import {
   toContractAppliedImport,
   toContractDiscardedImport,

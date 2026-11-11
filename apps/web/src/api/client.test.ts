@@ -10,6 +10,7 @@ import {
   settingsClient,
   projectClient,
   taskClient,
+  webHistoryClient,
   webProjectClient,
   webTaskClient,
   YOINK_BUILD_HEADER,
@@ -213,19 +214,11 @@ describe('web OpenAPI client', () => {
     expect(calls[2]?.method).toBe('DELETE');
   });
 
-  it('calls the project page and staged import on /web-api and leaves history on the alias', async () => {
+  it('calls the project page and staged import on /web-api', async () => {
     const calls: { url: string; method: string }[] = [];
     const projectId = '550e8400-e29b-41d4-a716-446655440041';
     vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
       calls.push({ url, method: init.method ?? 'GET' });
-      if (url.includes('/history')) {
-        return jsonResponse(200, {
-          entries: [],
-          hasMore: false,
-          nextCursor: null,
-          total: 0,
-        });
-      }
       if (url.includes('/imports')) {
         return jsonResponse(200, { imports: [] });
       }
@@ -251,12 +244,36 @@ describe('web OpenAPI client', () => {
     await webProjectClient.get({ id: projectId });
     await webProjectClient.listOpenTasks({ id: projectId, limit: 10 });
     await webProjectClient.listImports({});
-    await projectClient.listHistory({ id: projectId, limit: 10 });
 
     expect(calls[0]?.url).toBe(`/web-api/projects/${projectId}`);
     expect(calls[1]?.url.startsWith(`/web-api/projects/${projectId}/tasks?`)).toBe(true);
     expect(calls[2]?.url).toBe('/web-api/projects/imports');
-    expect(calls[3]?.url.startsWith(`/api/projects/${projectId}/history?`)).toBe(true);
+  });
+
+  it('calls project history and finished tasks on /web-api and leaves the alias client on /api', async () => {
+    const calls: { url: string }[] = [];
+    const projectId = '550e8400-e29b-41d4-a716-446655440041';
+    vi.stubGlobal('fetch', async (url: string) => {
+      calls.push({ url });
+      if (url.includes('/history')) {
+        return jsonResponse(200, {
+          entries: [],
+          hasMore: false,
+          nextCursor: null,
+          total: 0,
+          historyStartsAt: '2026-10-10T13:56:00.000Z',
+        });
+      }
+      return jsonResponse(200, { tasks: [], hasMore: false, nextCursor: null, total: 0 });
+    });
+
+    await webHistoryClient.listProjectHistory({ id: projectId, limit: 10 });
+    await webHistoryClient.listFinishedTasks({ id: projectId, limit: 10 });
+    await projectClient.listHistory({ id: projectId, limit: 10 });
+
+    expect(calls[0]?.url.startsWith(`/web-api/projects/${projectId}/history?`)).toBe(true);
+    expect(calls[1]?.url.startsWith(`/web-api/projects/${projectId}/finished?`)).toBe(true);
+    expect(calls[2]?.url.startsWith(`/api/projects/${projectId}/history?`)).toBe(true);
   });
 
   it('accepts a bodyless 204 when deleting a task', async () => {

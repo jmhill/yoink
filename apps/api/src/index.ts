@@ -1,7 +1,16 @@
 import { loadConfig } from './platform/config/config.js';
+import { assertTestFixturesAllowed } from './platform/config/test-fixtures-guard.js';
 import { bootstrapApp } from './composition-root.js';
 
 const main = async () => {
+  try {
+    assertTestFixturesAllowed(process.env);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(message);
+    process.exit(1);
+  }
+
   const config = await loadConfig();
   const app = await bootstrapApp({ config });
 

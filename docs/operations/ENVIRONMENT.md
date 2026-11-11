@@ -3,6 +3,7 @@
 | Variable | Purpose | Requirements |
 |----------|---------|--------------|
 | `DB_PATH` | SQLite database location | Required in production |
+| `YOINK_TEST_FIXTURES` | Register the `/test-api` fixture routes | Optional. Exact `true` registers them. The API refuses to start, before it listens, when this is `true` and `FLY_APP_NAME` is `jhtc-yoink-api`, or when `TURSO_DATABASE_URL` names the `yoink-prod` database. `NODE_ENV=production` alone does not refuse: the e2e image is production, with this flag set and a local `DB_PATH`. |
 | `SEED_TOKEN` | Bootstrap token secret for dev seeding | Optional, dev/test only |
 | `ADMIN_PASSWORD` | Admin panel password | Required to enable admin panel. No minimum length enforced (use strong password). |
 | `SESSION_SECRET` | Admin session HMAC signing key | Must be at least 32 characters. Required in production if admin panel is enabled. Auto-generated in dev/test if not provided. |

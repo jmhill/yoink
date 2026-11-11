@@ -1,4 +1,8 @@
-import { HISTORY_STARTS_AT, type HistoryPage, type TimelineEntry } from '@yoink/api-contracts';
+import {
+  HISTORY_STARTS_AT,
+  type HistoryPage,
+  type TimelineEntry,
+} from '../domain/model/timeline-document.js';
 import type { ListedPage } from '../../../kernel/listing/domain/listed-page.js';
 import { combineNoteTimelineEntries } from '../domain/combine-note-timeline.js';
 import {

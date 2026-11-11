@@ -3,6 +3,7 @@ import { implement } from '@orpc/server';
 import { projectOrpcContract } from '@yoink/api-contracts/orpc';
 import { publicApiV1Contract } from '@yoink/api-contracts/public-api/v1';
 import { toProjectListBody, toTaskListBody } from '../../_shared/http-listed-page.js';
+import { toContractHistoryPage, toHistoryTaskListBody } from './map-history-document.js';
 import {
   toContractAppliedImport,
   toContractDiscardedImport,
@@ -11,7 +12,6 @@ import {
 } from '../../_shared/map-task-document.js';
 import { openApiHandlerOptions } from '../../_shared/orpc/handler-options.js';
 import type { OrpcHttpContext } from '../../_shared/orpc/http-context.js';
-// M5.10 keeps history's read handlers on index.ts. The file is still the history element.
 import type { HistoryHandlers } from '../../../modules/history/index.js';
 import type {
   ProjectHandlers,
@@ -168,27 +168,33 @@ export const createProjectHandlers = (deps: ProjectEdgeDependencies) => {
       cursor: input.cursor,
     });
     return result.match(
-      (page) => page,
+      (page) => toContractHistoryPage(page),
       (error) => {
         throw mapListProjectHistoryError(error);
       },
     );
   };
   const listOpenTasks: Procedure<typeof legacy.listOpenTasks> = async ({ input, context }) => {
-    const result =
-      input.status === 'finished'
-        ? await historyHandlers.listFinishedTasks({
-            projectId: input.id,
-            organizationId: context.request.authContext.organizationId,
-            limit: input.limit,
-            cursor: input.cursor,
-          })
-        : await projectHandlers.listOpenTasks({
-            projectId: input.id,
-            organizationId: context.request.authContext.organizationId,
-            limit: input.limit,
-            cursor: input.cursor,
-          });
+    if (input.status === 'finished') {
+      const result = await historyHandlers.listFinishedTasks({
+        projectId: input.id,
+        organizationId: context.request.authContext.organizationId,
+        limit: input.limit,
+        cursor: input.cursor,
+      });
+      return result.match(
+        (page) => toHistoryTaskListBody(page),
+        (error) => {
+          throw mapListProjectTasksError(error);
+        },
+      );
+    }
+    const result = await projectHandlers.listOpenTasks({
+      projectId: input.id,
+      organizationId: context.request.authContext.organizationId,
+      limit: input.limit,
+      cursor: input.cursor,
+    });
     return result.match(
       (page) => toTaskListBody(page),
       (error) => {

@@ -1,5 +1,5 @@
 import { errAsync, type ResultAsync } from 'neverthrow';
-import type { HistoryPage } from '@yoink/api-contracts';
+import type { HistoryPage } from '../domain/model/timeline-document.js';
 import type { InvalidCursorError } from '../../../kernel/listing/domain/invalid-cursor.js';
 import { resolveListLimit } from '../../../kernel/listing/domain/list-kind.js';
 import { taskHistoryCursor } from '../../../kernel/listing/domain/list-keys.js';

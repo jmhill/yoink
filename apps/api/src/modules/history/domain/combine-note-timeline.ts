@@ -1,4 +1,4 @@
-import type { TimelineEntry } from '@yoink/api-contracts';
+import type { TimelineEntry } from './model/timeline-document.js';
 
 export const NOTE_SAVE_COMBINE_WINDOW_MS = 10 * 60 * 1000;
 

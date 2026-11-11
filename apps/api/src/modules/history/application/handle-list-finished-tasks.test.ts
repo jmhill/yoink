@@ -1,27 +1,17 @@
 import { describe, it, expect } from 'vitest';
 import { errAsync, okAsync } from 'neverthrow';
-import type { Project, Task } from '@yoink/api-contracts';
+import type { ListedTask } from '../domain/model/listed-task.js';
 import { UNKNOWN_ACTOR_NAME } from '../domain/to-timeline-entry.js';
+import type { ProjectScope } from './ports.js';
 import { handleListFinishedTasksOnProject } from './handle-list-finished-tasks.js';
 
 const now = '2026-10-11T15:00:00.000Z';
 
-const project: Project = {
-  id: 'project-1',
+const project: ProjectScope = {
   organizationId: 'org-1',
-  createdById: 'user-alice',
-  name: 'Kitchen',
-  status: 'active',
-  waitingOn: null,
-  waitingSince: null,
-  nextActionTaskId: null,
-  notebookPages: [],
-  createdAt: now,
-  lastChangedAt: now,
-  lastChangedBy: 'user-alice',
 };
 
-const finishedTask = (overrides: Partial<Task> = {}): Task => ({
+const finishedTask = (overrides: Partial<ListedTask> = {}): ListedTask => ({
   id: 'task-1',
   organizationId: 'org-1',
   createdById: 'user-alice',

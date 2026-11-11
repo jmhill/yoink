@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { HISTORY_STARTS_AT } from '@yoink/api-contracts';
+import { HISTORY_STARTS_AT } from '../domain/model/timeline-document.js';
 import { UNKNOWN_ACTOR_NAME } from '../domain/to-timeline-entry.js';
 import type { HistoryPageItem } from '../domain/history-page-item.js';
 import { collectLookupIds, entriesFromHistoryPage } from './map-history-page.js';

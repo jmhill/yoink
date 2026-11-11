@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { TimelineEntry } from '@yoink/api-contracts';
+import type { TimelineEntry } from './model/timeline-document.js';
 import { combineNoteTimelineEntries } from './combine-note-timeline.js';
 
 const noteEntry = (

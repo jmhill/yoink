@@ -2,7 +2,7 @@ import type {
   TimelineDetails,
   TimelineEntry,
   TimelineEntryKind,
-} from '@yoink/api-contracts';
+} from './model/timeline-document.js';
 import type { ChangeLogRecord } from './record.js';
 import type { TaskUpdatedPayloadV1 } from './payloads.js';
 

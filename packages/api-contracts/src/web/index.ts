@@ -1,4 +1,5 @@
 export { webAuthContract } from './auth-contract.js';
+export { webHistoryContract } from './history-contract.js';
 export { webInboxContract } from './contract.js';
 export { webListsContract } from './lists-contract.js';
 export { webProjectsContract } from './projects-contract.js';

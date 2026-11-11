@@ -26,8 +26,8 @@ import type {
 
 /**
  * Copied from the public-api project maps so this edge does not import that
- * edge. Statuses and bodies stay the same. Finished tasks, history, notes,
- * create, and the project catalog stay on the alias.
+ * edge. Statuses and bodies stay the same. Notes, create, and the project
+ * catalog stay on the alias. Finished tasks and history are the web history edge.
  */
 
 type CodedError = {

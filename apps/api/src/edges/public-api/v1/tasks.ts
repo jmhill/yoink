@@ -3,7 +3,7 @@ import { implement } from '@orpc/server';
 import { taskOrpcContract } from '@yoink/api-contracts/orpc';
 import { publicApiV1Contract } from '@yoink/api-contracts/public-api/v1';
 import { toTaskListBody } from '../../_shared/http-listed-page.js';
-import { toContractHistoryPage } from './map-history-document.js';
+import { toContractHistoryPage } from '../../_shared/map-history-document.js';
 import { toContractTask } from '../../_shared/map-task-document.js';
 import { openApiHandlerOptions } from '../../_shared/orpc/handler-options.js';
 import type { OrpcHttpContext } from '../../_shared/orpc/http-context.js';

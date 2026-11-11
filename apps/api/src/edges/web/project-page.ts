@@ -29,7 +29,7 @@ import {
 
 /**
  * Methods this screen calls. The rest of the handler stays off the port.
- * Finished tasks and history stay on the alias for M6.3-history.
+ * Finished tasks and history are the web history edge.
  */
 export type WebProjectPageDependencies = {
   projectHandlers: Pick<

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { publicApiV1Contract } from '@yoink/api-contracts/public-api/v1';
 import type { HistoryPage, ListedTask, TimelineEntry } from '../../../modules/history/index.js';
 import { HISTORY_STARTS_AT } from '../../../modules/history/index.js';
-import { toContractHistoryPage, toHistoryTaskListBody } from './map-history-document.js';
+import { toContractHistoryPage, toHistoryTaskListBody } from '../../_shared/map-history-document.js';
 
 const outputSchema = (procedure: { '~orpc': { outputSchemas?: readonly unknown[] } }): ZodTypeAny => {
   const schema = procedure['~orpc'].outputSchemas?.[0];

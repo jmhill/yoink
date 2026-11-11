@@ -31,8 +31,9 @@ const projectId = z.object({
 
 /**
  * Project page and staged import. Paths are the resource after `/web-api`.
- * Open tasks are the default list. Finished tasks, history, and notes stay
- * on `/api`. Create and the shared project catalog stay there too.
+ * Open tasks are the default list. Finished tasks and history are the web
+ * history contract. Notes, create, and the shared project catalog stay
+ * on `/api`.
  * The same procedures stay on `/api` and `/api/v1`.
  */
 export const webProjectsContract = oc.router({

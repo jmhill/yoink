@@ -1,6 +1,6 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { type HistoryPage } from '@yoink/api-contracts';
-import { projectClient } from '@/api/client';
+import { webHistoryClient } from '@/api/client';
 
 /** History and Finished open with the 10 newest rows. */
 export const PROJECT_TIMELINE_FIRST_PAGE_SIZE = 10;
@@ -30,7 +30,7 @@ export const useProjectHistoryPages = (projectId: string, enabled: boolean) => {
     initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam }) => {
       const cursor = historyCursor(pageParam);
-      return projectClient.listHistory({
+      return webHistoryClient.listProjectHistory({
         id: projectId,
         limit: timelinePageLimit(pageParam),
         ...(cursor === undefined ? {} : { cursor }),
@@ -62,9 +62,8 @@ export const useProjectFinishedPages = (projectId: string, enabled: boolean) => 
     initialPageParam: undefined as string | undefined,
     queryFn: ({ pageParam }) => {
       const cursor = historyCursor(pageParam);
-      return projectClient.listOpenTasks({
+      return webHistoryClient.listFinishedTasks({
         id: projectId,
-        status: 'finished',
         limit: timelinePageLimit(pageParam),
         ...(cursor === undefined ? {} : { cursor }),
       });

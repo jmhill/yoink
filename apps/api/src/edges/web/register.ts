@@ -9,6 +9,7 @@ import {
 } from '../_shared/orpc/handler-options.js';
 import { createWebAuthHandlers, type WebAuthDependencies } from './auth.js';
 import { WEB_API_PREFIX, dispatchWebApi } from './dispatch.js';
+import { createWebHistoryHandlers, type WebHistoryDependencies } from './history.js';
 import { createWebInboxHandlers, type WebInboxCaptures } from './inbox.js';
 import { webRequestLog } from './log-context.js';
 import {
@@ -36,9 +37,14 @@ export type WebApiDependencies = {
   tasksLists?: WebTasksListsDependencies;
   /**
    * Project page and staged import. Public v1 and the `/api` alias keep the
-   * same handlers. Finished tasks, history, and notes stay off this edge.
+   * same handlers. Notes stay off this edge.
    */
   projectPage?: WebProjectPageDependencies;
+  /**
+   * Project history and finished tasks. Public v1 and the `/api` alias keep
+   * the same history queries at their current paths.
+   */
+  history?: WebHistoryDependencies;
   /**
    * Work screen and work lists. Public v1 and the `/api` alias keep the
    * same Now, due, and work-list queries. This edge does not sort them.
@@ -130,6 +136,7 @@ const mountWebAuth = async (
  * `/web-api` is already the web edge prefix.
  * Inbox list and create, tasks and lists when `tasksLists` is set,
  * the project page and staged import when `projectPage` is set,
+ * project history and finished tasks when `history` is set,
  * the Work screen and work lists when `work` is set,
  * settings and organizations when `settings` is set,
  * and login, signup, session, passkeys, and join when `auth` is set.
@@ -188,6 +195,18 @@ export const registerWebApi = async (
     at('POST', '/projects/:id/confirm');
     at('POST', '/projects/:id/decline');
     at('POST', '/projects/:id/restore');
+  }
+
+  if (deps.history !== undefined) {
+    const history = new OpenAPIHandler(
+      createWebHistoryHandlers(deps.history),
+      yoinkOpenApiHandlerOptions
+    );
+    const at = (method: WebMethod | WebMethod[], path: string) => {
+      mount(app, history, method, `${WEB_API_PREFIX}${path}`, deps.combinedAuth);
+    };
+    at('GET', '/projects/:id/history');
+    at('GET', '/projects/:id/finished');
   }
 
   if (deps.work !== undefined) {

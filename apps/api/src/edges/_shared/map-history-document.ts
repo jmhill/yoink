@@ -4,13 +4,13 @@ import type {
   TimelineDetails as ContractTimelineDetails,
   TimelineEntry as ContractTimelineEntry,
 } from '@yoink/api-contracts';
-import type { ListedPage } from '../../../kernel/listing/domain/listed-page.js';
+import type { ListedPage } from '../../kernel/listing/domain/listed-page.js';
 import type {
   HistoryPage,
   ListedTask,
   TimelineDetails,
   TimelineEntry,
-} from '../../../modules/history/index.js';
+} from '../../modules/history/index.js';
 
 /**
  * Copy a timeline document onto the contract history page.

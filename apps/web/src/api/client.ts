@@ -4,6 +4,7 @@ import { OpenAPILink } from '@orpc/openapi/fetch';
 import type { JsonifiedClient } from '@orpc/openapi';
 import {
   webAuthContract,
+  webHistoryContract,
   webInboxContract,
   webListsContract,
   webProjectsContract,
@@ -45,6 +46,7 @@ type AuthClient = JsonifiedClient<RouterContractClient<typeof authOrpcContract>>
 type ProjectClient = JsonifiedClient<RouterContractClient<typeof projectOrpcContract>>;
 type WebProjectClient = JsonifiedClient<RouterContractClient<typeof webProjectsContract>>;
 type WorkClient = JsonifiedClient<RouterContractClient<typeof webWorkContract>>;
+type WebHistoryClient = JsonifiedClient<RouterContractClient<typeof webHistoryContract>>;
 type ReviewClient = JsonifiedClient<RouterContractClient<typeof reviewOrpcContract>>;
 type NoteClient = JsonifiedClient<RouterContractClient<typeof noteOrpcContract>>;
 
@@ -234,9 +236,9 @@ export const authClient: AuthClient = createORPCClient(
 );
 
 /**
- * Project catalog, create, finished tasks, and history. Review, work, process,
- * tasks, and the rail share `['projects']`, so that list stays here. Finished
- * tasks and history stay here until their screens move.
+ * Project catalog and create. Review, work, process, tasks, and the rail
+ * share `['projects']`, so that list stays here. Project history and finished
+ * tasks are `webHistoryClient`.
  */
 export const projectClient: ProjectClient = createORPCClient(
   new OpenAPILink(projectOrpcContract, { fetch: fetchWithSession })
@@ -248,6 +250,19 @@ export const projectClient: ProjectClient = createORPCClient(
  * The page splits that page into the next-action section and the other
  * open tasks and adds the count. It does not sort.
  */
+/**
+ * Project history and finished tasks. `/web-api` plus `/projects/{id}/history`
+ * is `/web-api/projects/{id}/history`. Finished tasks use `/finished` so they
+ * do not share the open-task route. The edge does not sort those pages.
+ * Public `/api` and `/api/v1` stay on `projectClient`.
+ */
+export const webHistoryClient: WebHistoryClient = createORPCClient(
+  new OpenAPILink(webHistoryContract, {
+    origin: '/web-api',
+    fetch: fetchWithSession,
+  })
+);
+
 export const webProjectClient: WebProjectClient = createORPCClient(
   new OpenAPILink(webProjectsContract, {
     origin: '/web-api',

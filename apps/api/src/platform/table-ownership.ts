@@ -56,8 +56,8 @@
  *   references.
  *
  * A miss is a scanner boundary. A hit is never removed by weakening the
- * match. Fix a false positive by restructuring the code or by a commented
- * allowlist entry.
+ * match. Fix a false positive by restructuring the code. There is no
+ * allowlist.
  *
  * ## Who may name a table
  *
@@ -170,18 +170,8 @@ export type OwnershipViolation = {
   count: number;
 };
 
-export type TableOwnershipAllowlistEntry = {
-  path: string;
-  keyword: SqlKeyword;
-  table: TableName;
-  count: number;
-  /** Task that removes this exception. */
-  removedBy: string;
-};
-
 export type OwnershipReport = {
   violations: OwnershipViolation[];
-  staleAllowlist: TableOwnershipAllowlistEntry[];
 };
 
 const MODULE_DIRECTORY_OWNERS = {
@@ -465,8 +455,7 @@ const compareViolation = (left: OwnershipViolation, right: OwnershipViolation): 
   );
 
 export const checkTableOwnership = (
-  files: readonly ScannedSourceFile[],
-  allowlist: readonly TableOwnershipAllowlistEntry[]
+  files: readonly ScannedSourceFile[]
 ): OwnershipReport => {
   const counts = new Map<string, OwnershipViolation>();
   for (const file of files) {
@@ -488,45 +477,17 @@ export const checkTableOwnership = (
     }
   }
 
-  const allowlistByKey = new Map<string, TableOwnershipAllowlistEntry>();
-  const staleAllowlist: TableOwnershipAllowlistEntry[] = [];
-  for (const entry of allowlist) {
-    const key = violationKey(entry.path, entry.keyword, entry.table);
-    if (allowlistByKey.has(key)) {
-      staleAllowlist.push(entry);
-      continue;
-    }
-    allowlistByKey.set(key, entry);
-    const actual = counts.get(key);
-    if (actual === undefined || actual.count !== entry.count) {
-      staleAllowlist.push(entry);
-    }
-  }
-
-  const violations: OwnershipViolation[] = [];
-  for (const [key, actual] of counts) {
-    const entry = allowlistByKey.get(key);
-    if (entry === undefined || entry.count !== actual.count) {
-      violations.push(actual);
-    }
-  }
-
+  const violations = [...counts.values()];
   violations.sort(compareViolation);
-  staleAllowlist.sort((left, right) =>
-    violationKey(left.path, left.keyword, left.table).localeCompare(
-      violationKey(right.path, right.keyword, right.table)
-    )
-  );
-  return { violations, staleAllowlist };
+  return { violations };
 };
 
 export const collectOwnershipFailures = (input: {
   files: readonly ScannedSourceFile[];
-  allowlist: readonly TableOwnershipAllowlistEntry[];
   /** Posix directory paths relative to `apps/api/src`. */
   directories: readonly string[];
 }): OwnershipReport & { workflowInfrastructure: string[] } => ({
-  ...checkTableOwnership(input.files, input.allowlist),
+  ...checkTableOwnership(input.files),
   workflowInfrastructure: input.directories.filter(isWorkflowInfrastructurePath).sort(),
 });
 

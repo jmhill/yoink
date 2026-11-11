@@ -331,7 +331,7 @@ export default [
     },
     rules: {
       'boundaries/element-types': [
-        'warn',
+        'error',
         {
           default: 'disallow',
           rules: [
@@ -710,7 +710,7 @@ export default [
         },
       ],
       'boundaries/entry-point': [
-        'warn',
+        'error',
         {
           default: 'disallow',
           rules: [
@@ -722,7 +722,7 @@ export default [
       ],
       // M5.11-access. The transitional package rule is error. Access domain,
       // application, infrastructure, and tests are also banned from
-      // `@yoink/api-contracts` below. Other boundaries rules stay at warn.
+      // `@yoink/api-contracts` below. M7.5 moves the other ADR §10 rules to error.
       'boundaries/external': [
         'error',
         {
@@ -800,7 +800,7 @@ export default [
           ],
         },
       ],
-      'boundaries/no-unknown': 'warn',
+      'boundaries/no-unknown': 'error',
     },
   },
   {

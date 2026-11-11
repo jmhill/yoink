@@ -1,19 +1,42 @@
 import { oc } from '@orpc/contract';
 import { OpenAPIHandler } from '@orpc/openapi/fastify';
 import { implement } from '@orpc/server';
+import type { ResultAsync } from 'neverthrow';
 import { tokenOrpcContract } from '@yoink/api-contracts/orpc';
 import { publicApiV1Contract } from '@yoink/api-contracts/public-api/v1';
 import { accessStorageError } from '../../_shared/auth/access-http-errors.js';
-import type { TokenHandlers } from '../../../access/application/create-token-handlers.js';
-import type { ListTokensError } from '../../../access/domain/token-errors.js';
+import type { Actor } from '../../../kernel/auth-context.js';
 import { yoinkOpenApiHandlerOptions } from '../../_shared/orpc/handler-options.js';
 import type { OrpcHttpContext } from '../../_shared/orpc/http-context.js';
 
-export type TokenListEdgeDependencies = { tokenHandlers: TokenHandlers };
+/** The one list failure this edge maps. Access keeps the stored error. */
+type TokenListFailure = {
+  readonly type: 'TOKEN_STORAGE_ERROR';
+  readonly message: string;
+  readonly cause?: unknown;
+  readonly tokenId?: string;
+};
+
+type ListedToken = {
+  id: string;
+  name: string;
+  lastUsedAt: string | undefined;
+  createdAt: string;
+};
+
+export type TokenListEdgeDependencies = {
+  tokenHandlers: {
+    list: (query: {
+      actor: Actor;
+      userId: string;
+      organizationId: string;
+    }) => ResultAsync<{ tokens: ListedToken[] }, TokenListFailure>;
+  };
+};
 
 type Procedure<T> = T extends { handler: (fn: infer Fn) => unknown } ? Fn : never;
 
-const listTokensFailure = (error: ListTokensError) => {
+const listTokensFailure = (error: TokenListFailure) => {
   switch (error.type) {
     case 'TOKEN_STORAGE_ERROR':
       return accessStorageError(error, 'Failed to list tokens');
@@ -23,7 +46,7 @@ const listTokensFailure = (error: ListTokensError) => {
 /**
  * `GET /api/auth/tokens` is the frozen integration procedure. Create, delete,
  * mint, and reissue stay on the client-only registrar and are not aliased.
- * M5.13 removes these access imports once access exports the list from index.ts.
+ * The handler type is local so this edge does not import access.
  */
 export const createTokenListHandlers = (deps: TokenListEdgeDependencies) => {
   const legacyContract = oc.router({ list: tokenOrpcContract.list });

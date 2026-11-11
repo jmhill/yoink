@@ -696,7 +696,7 @@ The first enforcement task refreshes `ESLINT_BASELINE.md`, which still says 15 w
   - a new migration (after `043`) has no `owner`, or touches a table its owner doesn't own (unless it's `owner: 'platform'` with a written reason)
   - a new foreign key references another module's table, other than the identity anchors
   - a `workflows/*/infrastructure/` directory exists
-- The test is **heuristic**: it finds SQL by matching keywords (`FROM`, `JOIN`, `INTO`, `UPDATE`, `TABLE`, `REFERENCES`) followed by a table name inside string literals. A false positive is fixed by restructuring the code or by an explicit, commented allowlist entry, never by loosening the rule.
+- The test is **heuristic**: it finds SQL by matching keywords (`FROM`, `JOIN`, `INTO`, `UPDATE`, `TABLE`, `REFERENCES`) followed by a table name inside string literals. A false positive is fixed by restructuring the code, never by loosening the rule. The allowlist is gone.
 
 ## 11. Legacy code being migrated
 

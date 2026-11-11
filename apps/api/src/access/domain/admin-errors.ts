@@ -25,7 +25,26 @@ import {
   type TokenStorageError,
 } from './auth-errors.js';
 import type { InvalidTokenNameError } from './token-errors.js';
-import type { ProjectNotFoundError, StorageError as ProjectStorageError } from '../../modules/task-management/domain/messages/project-errors.js';
+
+/** Same fields as the project store's not-found error. Access does not import that module. */
+export type AdminProjectNotFoundError = {
+  readonly type: 'PROJECT_NOT_FOUND';
+  readonly id: string;
+  readonly message: string;
+};
+
+export const adminProjectNotFoundError = (id: string): AdminProjectNotFoundError => ({
+  type: 'PROJECT_NOT_FOUND',
+  id,
+  message: 'Project not found',
+});
+
+/** Same fields as the project store's storage error. */
+export type AdminProjectStorageError = {
+  readonly type: 'STORAGE_ERROR';
+  readonly message: string;
+  readonly cause?: unknown;
+};
 
 // Re-export storage errors for convenience
 export type { OrganizationStorageError, MembershipStorageError, UserStorageError, TokenStorageError };
@@ -49,8 +68,8 @@ export type AdminServiceError =
   | UserNotFoundError
   | TokenNotFoundError
   | InvalidTokenNameError
-  | ProjectNotFoundError
-  | ProjectStorageError
+  | AdminProjectNotFoundError
+  | AdminProjectStorageError
   | BotCannotHavePrivilegedRoleError
   | CannotAssignOwnerRoleError
   | LastAdminError

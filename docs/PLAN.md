@@ -705,7 +705,7 @@ Status lives in that plan's execution index. These checkboxes do not repeat it.
 - [x] M5.5 Processing workflow and delete-source-capture policy
 - [x] M5.6 Remove `tasks.capture_id → captures` foreign key
 - [x] M5.7 Notes
-- [ ] M5.8 Notes settings table and the mirror-bot column
+- [ ] M5.8 Notes settings table and the mirror-bot column. M5.8c is Done (#389, `0ba8258b`, Trunk 42965731396). #256 is closed. M5.8d is Gated.
 - [x] M5.9 Remove `project_notes.project_id → projects` foreign key
 - [x] M5.10 Review and history (queries)
 - [ ] M5.11 Own types per module
@@ -2122,7 +2122,7 @@ When resuming work on this project:
 
 **ADR-001 is accepted.** The migration is not complete. Enforcement moves to `error` in M7.5, not in M1.
 
-Live status, merge commits, and Trunk run ids are the execution index in [the migration plan](./architecture/adr/001-migration-plan.md). The checkboxes above are the phase list.
+Live status, merge commits, and Trunk run ids are the execution index in [the migration plan](./architecture/adr/001-migration-plan.md). The checkboxes above are the phase list. M5.8c is Done (#389, `0ba8258b`, Trunk 42965731396). #256 is closed.
 
 ### Earlier focus: Judge captures/lists/task-update sandwich, then 8.5.4
 

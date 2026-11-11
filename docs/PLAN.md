@@ -2122,7 +2122,7 @@ When resuming work on this project:
 
 **ADR-001 is accepted.** The migration is not complete. Enforcement moves to `error` in M7.5, not in M1.
 
-Live status, merge commits, and Trunk run ids are the execution index in [the migration plan](./architecture/adr/001-migration-plan.md). The checkboxes above are the phase list. M5.8c is Done (#389, `0ba8258b`, Trunk 42965731396). #256 is closed. M5.11-history is In review.
+Live status, merge commits, and Trunk run ids are the execution index in [the migration plan](./architecture/adr/001-migration-plan.md). The checkboxes above are the phase list. M5.8c is Done (#389, `0ba8258b`, Trunk 42965731396). #256 is closed. M5.11-history is In review. The Turso rebuild foreign-key audit and Turso-like runner default are Done (#391, `d10bc530`, Trunk 42976221286).
 
 ### Earlier focus: Judge captures/lists/task-update sandwich, then 8.5.4
 

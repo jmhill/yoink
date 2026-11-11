@@ -1,4 +1,4 @@
-import type { ProjectStatus, ReviewReason } from '@yoink/api-contracts';
+import type { ProjectStatus, ReviewReason } from './model/review-document.js';
 
 export const QUIET_AFTER_DAYS = 7;
 

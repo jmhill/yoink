@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { errAsync, okAsync } from 'neverthrow';
-import type { Project } from '@yoink/api-contracts';
-import { PILE_SAFETY_CAP } from '@yoink/api-contracts';
+import type { Project } from '../domain/model/review-document.js';
 import { encodeKeysetCursor } from '../../../kernel/listing/application/keyset-codec.js';
+import { resolveListLimit } from '../../../kernel/listing/domain/list-kind.js';
 import { reviewCursor } from '../../../kernel/listing/domain/list-keys.js';
 import { storageError } from '../domain/review-errors.js';
 import { REVIEW_SECTION_NEEDS_NEXT } from '../domain/review-order.js';
@@ -54,7 +54,7 @@ describe('handleListReview', () => {
           expect(options.organizationId).toBe(ORG);
           expect(options.today).toBe('2026-10-12');
           expect(options.timeZone).toBe('America/Chicago');
-          expect(options.fetchLimit).toBe(PILE_SAFETY_CAP + 1);
+          expect(options.fetchLimit).toBe(resolveListLimit(undefined, 'pile') + 1);
           return okAsync({
             rows: [house],
             total: 1,

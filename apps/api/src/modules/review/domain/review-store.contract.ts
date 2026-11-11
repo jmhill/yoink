@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import type { Project, Task } from '@yoink/api-contracts';
+import type { Project, Task } from './model/review-document.js';
 import { reviewCursor } from '../../../kernel/listing/domain/list-keys.js';
 import type { ReviewChangeLogEntry, ReviewStore } from './review-store.js';
 

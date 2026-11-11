@@ -1,38 +1,17 @@
 import { OpenAPIHandler } from '@orpc/openapi/fastify';
 import { implement } from '@orpc/server';
-import type { ReviewCounts, ReviewProject } from '@yoink/api-contracts';
 import { reviewOrpcContract } from '@yoink/api-contracts/orpc';
 import { publicApiV1Contract } from '@yoink/api-contracts/public-api/v1';
-import type { ListedPage } from '../../../kernel/listing/domain/listed-page.js';
 import { openApiHandlerOptions } from '../../_shared/orpc/handler-options.js';
 import type { OrpcHttpContext } from '../../_shared/orpc/http-context.js';
 import { listedRequestValidationError } from '../../_shared/request-validation.js';
-import type { RankedReviewProject, ReviewHandlers } from '../../../modules/review/index.js';
+import type { ReviewHandlers } from '../../../modules/review/index.js';
+import { toContractDonePage, toContractReviewPage } from './map-review-document.js';
 import { mapListDoneError, mapListReviewError } from './review-errors.js';
 
 export type ReviewEdgeDependencies = { reviewHandlers: ReviewHandlers };
 
 type Procedure<T> = T extends { handler: (fn: infer Fn) => unknown } ? Fn : never;
-
-const toReviewBody = (
-  page: ListedPage<RankedReviewProject> & { today: string; counts: ReviewCounts },
-) => ({
-  projects: page.items.map(
-    (item): ReviewProject => ({
-      project: item.project,
-      reasons: item.reasons,
-      lastChangeAt: item.lastChangeAt,
-      daysSinceChange: item.daysSinceChange,
-      daysWaiting: item.daysWaiting,
-      nextAction: item.nextAction,
-    }),
-  ),
-  today: page.today,
-  counts: page.counts,
-  hasMore: page.hasMore,
-  nextCursor: page.nextCursor,
-  total: page.total,
-});
 
 export const createReviewHandlers = (deps: ReviewEdgeDependencies) => {
   const legacy = implement(reviewOrpcContract).$context<OrpcHttpContext>();
@@ -46,7 +25,7 @@ export const createReviewHandlers = (deps: ReviewEdgeDependencies) => {
       timeZone: input.timeZone,
     });
     return result.match(
-      (page) => toReviewBody(page),
+      (page) => toContractReviewPage(page),
       (error) => {
         throw mapListReviewError(error);
       },
@@ -60,7 +39,7 @@ export const createReviewHandlers = (deps: ReviewEdgeDependencies) => {
       cursor: input.cursor,
     });
     return result.match(
-      (page) => page,
+      (page) => toContractDonePage(page),
       (error) => {
         throw mapListDoneError(error);
       },

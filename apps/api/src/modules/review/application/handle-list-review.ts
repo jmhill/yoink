@@ -1,5 +1,5 @@
 import { errAsync, ok, type ResultAsync } from 'neverthrow';
-import type { ReviewCounts } from '@yoink/api-contracts';
+import type { ReviewCounts } from '../domain/model/review-document.js';
 import { resolveListLimit } from '../../../kernel/listing/domain/list-kind.js';
 import { reviewCursor } from '../../../kernel/listing/domain/list-keys.js';
 import { assembleListedPage, type ListedPage } from '../../../kernel/listing/domain/listed-page.js';

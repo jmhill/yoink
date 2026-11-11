@@ -1,4 +1,4 @@
-import type { Project, ReviewNextAction, ReviewProject } from '@yoink/api-contracts';
+import type { Project, ReviewNextAction, ReviewProject } from './model/review-document.js';
 import { viewerToday } from '../../../kernel/viewer-today.js';
 import { calendarDaysBetween } from './calendar-days.js';
 import { reviewReasons } from './classify-review.js';

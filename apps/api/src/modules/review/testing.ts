@@ -1,4 +1,4 @@
 export {
   createFakeReviewStore,
   type FakeReviewStoreOptions,
-} from './infrastructure/fake-review-store.js';
+} from './infrastructure/fakes/fake-review-store.js';

@@ -1,3 +1,4 @@
+export type { ReviewDonePage } from './application/handle-list-done.js';
 export {
   createReviewFromFacts,
   type ReviewFactDeps,
@@ -11,4 +12,11 @@ export {
   type ListDoneError,
   type ListReviewError,
 } from './domain/review-errors.js';
+export type {
+  Project as ReviewProjectDocument,
+  ReviewCounts,
+  ReviewNextAction,
+  ReviewProject,
+  Task as ReviewTaskDocument,
+} from './domain/model/review-document.js';
 export type { RankedReviewProject } from './domain/review-order.js';

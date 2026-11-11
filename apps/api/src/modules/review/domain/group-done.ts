@@ -1,4 +1,4 @@
-import type { Project, Task } from '@yoink/api-contracts';
+import type { Project, Task } from './model/review-document.js';
 import type { FinishedTask } from '../../../kernel/listing/domain/list-keys.js';
 
 export type DoneListNextAction = {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { errAsync, okAsync } from 'neverthrow';
-import type { Project, Task } from '@yoink/api-contracts';
-import { PILE_SAFETY_CAP } from '@yoink/api-contracts';
+import type { Project, Task } from '../domain/model/review-document.js';
+import { resolveListLimit } from '../../../kernel/listing/domain/list-kind.js';
 import { encodeKeysetCursor } from '../../../kernel/listing/application/keyset-codec.js';
 import { doneListCursor } from '../../../kernel/listing/domain/list-keys.js';
 import { asFinishedTaskOrNull, type DoneListRow } from '../domain/group-done.js';
@@ -67,7 +67,7 @@ describe('handleListDone', () => {
           expect(options.organizationId).toBe(ORG);
           expect(options.completedAfter).toBe('2026-10-12T05:00:00.000Z');
           expect(options.completedBefore).toBe('2026-10-19T05:00:00.000Z');
-          expect(options.fetchLimit).toBe(PILE_SAFETY_CAP + 1);
+          expect(options.fetchLimit).toBe(resolveListLimit(undefined, 'pile') + 1);
           return okAsync({
             rows: [asRow(attic)],
             total: 1,

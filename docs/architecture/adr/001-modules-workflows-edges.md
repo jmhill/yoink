@@ -1,6 +1,6 @@
 # ADR-001: Modules, workflows, and edges
 
-- **Status:** Accepted (2026-11-06). Spikes resolved: see §6.1, §9. Clarified 2026-11-09: Justin adopted work-query ownership and review-policy ownership, both option 1, at 10:43am CST. See §3.1 and §8.2. Clarified 2026-11-10: Justin set the M6.5 log window at 14 days for web and admin. Admin may later be shortened only by Justin. See §8.2.
+- **Status:** Accepted (2026-11-06). Spikes resolved: see §6.1, §9. Clarified 2026-11-09: Justin adopted work-query ownership and review-policy ownership, both option 1, at 10:43am CST. See §3.1 and §8.2. Clarified 2026-11-10 at 8:12pm CT: Justin set the M6.5 log window at 14 days for web and admin, as recorded in [#291](https://github.com/jmhill/yoink/issues/291) and [#292](https://github.com/jmhill/yoink/issues/292). Admin may later be shortened only by Justin. See §8.2.
 - **Date:** 2026-11-06
 - **Deciders:** Justin
 - **Migration plan:** [001-migration-plan.md](./001-migration-plan.md)
@@ -548,7 +548,7 @@ type IntegrationEvent<T extends string = string, P = unknown> = {
 2. Ship the frontend that uses it.
 3. Remove the old shape once no requests carrying the previous build's id have arrived for 14 days.
 
-The web and admin apps send `X-Yoink-Build` for this. Justin set that window on 2026-11-10: M6.5 evidence is at least 14 days of production logs with no requests from `X-Yoink-Build` values that use the legacy routes. The same 14 days applies to web and to admin. Admin may later be shortened only by Justin. The extension edge is versioned instead (§9).
+The web and admin apps send `X-Yoink-Build` for this. Justin set that window on 2026-11-10 at 8:12pm CT, as recorded in [#291](https://github.com/jmhill/yoink/issues/291) and [#292](https://github.com/jmhill/yoink/issues/292): M6.5 evidence is at least 14 days of production logs with no requests from `X-Yoink-Build` values that use the legacy routes, plus his explicit approval on the issue. Green CI is not enough. The same 14 days applies to web and to admin. Admin may later be shortened only by Justin. The extension edge is versioned instead (§9).
 
 - An edge handler calls **at most one command or workflow**, and any number of queries. If a screen needs two changes to succeed together, that's a workflow in the core.
 - Edges **compose, filter and shape**:

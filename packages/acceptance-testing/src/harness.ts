@@ -1,6 +1,8 @@
 import {
   beforeAll as vitestBeforeAll,
   afterAll as vitestAfterAll,
+  beforeEach as vitestBeforeEach,
+  afterEach as vitestAfterEach,
 } from 'vitest';
 import type { Driver, DriverCapability, DriverConfig } from './drivers/index.js';
 import { createHttpDriver, createPlaywrightDriver } from './drivers/index.js';
@@ -263,6 +265,22 @@ export function usingDrivers(
     vitestAfterAll(async () => {
       await driver.admin.logout();
       await driver.teardown();
+    });
+
+    vitestBeforeEach(() => {
+      driver.beginFailureDiagnostics?.();
+    });
+
+    vitestAfterEach(async (ctx) => {
+      try {
+        if (ctx.task.result?.state === 'fail') {
+          await driver.saveFailureDiagnostics?.(ctx.task.name);
+        } else {
+          await driver.discardPassingDiagnostics?.();
+        }
+      } catch (error) {
+        console.error('failure diagnostics failed', error);
+      }
     });
 
     // Create the appropriate context based on driver type

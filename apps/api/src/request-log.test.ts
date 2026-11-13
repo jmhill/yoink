@@ -2,7 +2,7 @@ import { Writable } from 'node:stream';
 import { describe, expect, it } from 'vitest';
 import Fastify, { LogController } from 'fastify';
 import { createFastifyInstance } from './app.js';
-import { registerRequestCompletedLog } from './platform/logging/request-log.js';
+import { registerRequestCompletedLog, slowRequestWarning } from './platform/logging/request-log.js';
 
 const capture = () => {
   const lines: string[] = [];
@@ -47,6 +47,8 @@ describe('request completed logs', () => {
     const completed = entries(lines).filter((entry) => entry.msg === 'request completed');
     expect(completed).toEqual([
       expect.objectContaining({
+        method: 'GET',
+        route: '/api/tasks',
         url: '/api/tasks?filter=today',
         statusCode: 200,
       }),
@@ -71,7 +73,20 @@ describe('request completed logs', () => {
 
     expect(response.statusCode).toBe(204);
     const completed = entries(lines).find((entry) => entry.msg === 'request completed');
-    expect(completed).toMatchObject({ url: '/health', statusCode: 204 });
+    expect(completed).toMatchObject({
+      method: 'GET',
+      route: '/health',
+      url: '/health',
+      statusCode: 204,
+    });
+    expect(typeof completed?.reqId).toBe('string');
     await app.close();
+  });
+
+  it('warns on a slow fixture-server request and stays quiet in Vitest', () => {
+    expect(slowRequestWarning({ YOINK_TEST_FIXTURES: 'true' }, 1000)).toBe(true);
+    expect(slowRequestWarning({ YOINK_TEST_FIXTURES: 'true' }, 999)).toBe(false);
+    expect(slowRequestWarning({ YOINK_TEST_FIXTURES: 'true', VITEST: 'true' }, 5000)).toBe(false);
+    expect(slowRequestWarning({}, 5000)).toBe(false);
   });
 });

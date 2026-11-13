@@ -1,9 +1,13 @@
 import { defineConfig } from 'vitest/config';
+import { fileURLToPath } from 'node:url';
 import MultiDriverReporter from '@yoink/acceptance-testing/reporter';
 
 export default defineConfig({
   test: {
     include: ['src/use-cases/**/*.test.ts'],
+    setupFiles: [
+      fileURLToPath(new URL('../../scripts/vitest-failure-diagnostics.ts', import.meta.url)),
+    ],
     // Playwright createActor runs in beforeEach (org + invitation + passkey
     // signup + admin name PATCH). Typical 2–3s; under a full parallel CI suite
     // it can exceed Vitest's 10s hook default. Keep hook and test budgets

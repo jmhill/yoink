@@ -517,6 +517,26 @@ expect(await hasher.verify('password', hash)).toBe(true);
 
 ---
 
+## Failure diagnostics
+
+A failing test writes files and does not retry, lengthen a timeout, or change the result. Passing tests keep no screenshots, traces, or video. PR CI and Trunk upload the files on failure and keep them for 7 days.
+
+| Failure | Where it is written | CI artifact |
+| --- | --- | --- |
+| Playwright e2e | `packages/acceptance-tests/e2e-failure-diagnostics/<test>/` | `e2e-failure-diagnostics` |
+| API log for that run | `e2e-api-logs/api.log`, plus `api-log-window.log` inside the test folder | `e2e-api-logs` and the window in `e2e-failure-diagnostics` |
+| Vitest unit or e2e | `<package>/failure-diagnostics/<test>.json` | `unit-failure-diagnostics` (Quality) or `e2e-vitest-failure-diagnostics` (E2E) |
+
+Playwright folder:
+
+- `report.json` — test name, actor emails (the `Date.now` suffix is the actor seed), browser console, page errors, and network calls that failed or took at least 1s.
+- `screenshot-*.png`, `trace-*.zip`, `video-*.webm` — open the zip with `npx playwright show-trace trace-0.zip`.
+- `api-log-window.log` — API JSON lines from just before the test until just after. Each line has `time` (epoch ms), `reqId`, `method`, `route`, `statusCode`, and `responseTime`. `slow_request` is a request of at least 1s. `event_loop_lag` is `p99Ms` or `maxMs` of at least 500; a multi-second `maxMs` is a frozen loop. `write_gate_wait` is how long a write waited on the gate (`waitedMs`).
+
+Vitest JSON: test name, `durationMs` (through the failure, including `beforeEach`), `sequenceSeed` (`null` means shuffle is off), and `fakeStores` when the test built a fake organization, user, membership, session, or token store. Token hashes are omitted. The same summary is printed to the Quality log as `vitest_failure`.
+
+`YOINK_E2E_DIAGNOSTICS=0` turns the Playwright recording off. Leave it unset in CI.
+
 ## References
 
 - [Dave Farley - Acceptance Testing](https://www.youtube.com/watch?v=SXbhOqz5hYo) - 4-layer architecture source

@@ -7,6 +7,7 @@ import type { Invitation } from '../domain/invitation.js';
 import type { AcceptMembershipChange } from '../domain/decide-accept-invitation.js';
 import type { AssignOwnerPlan } from '../domain/assign-owner-plan.js';
 import { membershipStorageError, type MembershipStorageError } from '../domain/organization-errors.js';
+import { registerFailureState } from '../../platform/testing/failure-state.js';
 
 export type FakeOrganizationMembershipStoreOptions = {
   shouldFailOnSave?: boolean;
@@ -34,6 +35,12 @@ export const createFakeOrganizationMembershipStore = (
   const events: MembershipEvent[] = [];
   const replaced: Invitation[] = [];
   const accepted: Invitation[] = [];
+  registerFailureState('fakeOrganizationMembershipStore', () => ({
+    memberships: memberships.map((membership) => ({ ...membership })),
+    events: [...events],
+    replacedInvitations: [...replaced],
+    acceptedInvitations: [...accepted],
+  }));
 
   const saveMembership = (membership: OrganizationMembership): void => {
     const existingIndex = memberships.findIndex((entry) => entry.id === membership.id);

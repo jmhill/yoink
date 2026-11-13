@@ -13,6 +13,9 @@ tmp
 # Test outputs
 test-results.json
 coverage
+failure-diagnostics/
+e2e-failure-diagnostics/
+e2e-api-logs/
 
 # Environment and IDE
 .env

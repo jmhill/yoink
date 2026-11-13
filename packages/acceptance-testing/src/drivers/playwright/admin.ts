@@ -13,6 +13,7 @@ import {
 import type { Admin } from '../../dsl/index.js';
 import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from './page-objects.js';
 import { SignupPage } from './page-objects.js';
+import { attachObservedContext, observedContextOptions } from './failure-diagnostics.js';
 import {
   OPEN_DIALOG_CONTENT,
   saveWalkthroughPng,
@@ -43,6 +44,21 @@ export const createPlaywrightAdmin = (deps: PlaywrightAdminDependencies): Admin 
     return page;
   };
 
+  const openContext = async (): Promise<BrowserContext> => {
+    const browser = deps.getBrowser();
+    if (!browser) {
+      throw new Error('Driver not initialized. Call setup() first.');
+    }
+    const created = await browser.newContext(
+      await observedContextOptions({
+        baseURL: deps.baseUrl,
+        reducedMotion: 'reduce',
+      })
+    );
+    await attachObservedContext(created);
+    return created;
+  };
+
   const clearScreenshotFocus = async (adminPage: Page): Promise<void> => {
     await adminPage.locator('[data-screenshot-focus]').evaluateAll((els) => {
       for (const el of els) {
@@ -64,14 +80,7 @@ export const createPlaywrightAdmin = (deps: PlaywrightAdminDependencies): Admin 
     if (page) {
       return page;
     }
-    const browser = deps.getBrowser();
-    if (!browser) {
-      throw new Error('Driver not initialized. Call setup() first.');
-    }
-    context = await browser.newContext({
-      baseURL: deps.baseUrl,
-      reducedMotion: 'reduce',
-    });
+    context = await openContext();
     page = await context.newPage();
     await page.goto('/admin/login');
     await page.getByLabel('Admin Password').fill(deps.password);
@@ -454,15 +463,8 @@ export const createPlaywrightAdmin = (deps: PlaywrightAdminDependencies): Admin 
     },
 
     async openUnsignedSignup(code: string): Promise<void> {
-      const browser = deps.getBrowser();
-      if (!browser) {
-        throw new Error('Driver not initialized. Call setup() first.');
-      }
       if (!unsignedContext) {
-        unsignedContext = await browser.newContext({
-          baseURL: deps.baseUrl,
-          reducedMotion: 'reduce',
-        });
+        unsignedContext = await openContext();
         unsignedPage = await unsignedContext.newPage();
       }
       const webPage = unsignedPage;

@@ -7,6 +7,7 @@ import {
   userStorageError,
   type UserStorageError,
 } from '../domain/user-errors.js';
+import { registerFailureState } from '../../platform/testing/failure-state.js';
 
 export type FakeUserStoreOptions = {
   shouldFailOnSave?: boolean;
@@ -18,6 +19,7 @@ export const createFakeUserStore = (
   options: FakeUserStoreOptions = {}
 ): UserStore => {
   const users: User[] = [...(options.initialUsers ?? [])];
+  registerFailureState('fakeUserStore', () => users.map((user) => ({ ...user })));
 
   return {
     save: (user: User): ResultAsync<void, UserStorageError> => {

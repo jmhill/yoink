@@ -53,6 +53,15 @@ jobs:
       - name: Run quality checks
         run: pnpm quality
 
+      - name: Upload unit failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v4
+        with:
+          name: unit-failure-diagnostics
+          path: '**/failure-diagnostics/**'
+          retention-days: 7
+          if-no-files-found: warn
+
       - name: Security audit
         run: pnpm audit --audit-level=high
 
@@ -114,11 +123,9 @@ jobs:
               sleep 0.5
             done
             if [ -z "$cid" ]; then
-              echo "api container never appeared" > e2e-api-logs/api.log
+              echo "api container never appeared" > e2e-api-logs/api-missing.txt
               exit 0
             fi
-            docker logs -f "$cid" > e2e-api-logs/api.log 2>&1 &
-            logpid=$!
             while true; do
               # Config.Env holds ADMIN_PASSWORD, SESSION_SECRET, and WEBAUTHN_CHALLENGE_SECRET.
               if ! docker inspect "$cid" 2>/dev/null \
@@ -139,9 +146,6 @@ jobs:
               fi
               sleep 0.2
             done
-            sleep 1
-            kill "$logpid" 2>/dev/null
-            wait "$logpid"
           ) &
           watcher=$!
           status=0
@@ -157,6 +161,24 @@ jobs:
         with:
           name: e2e-api-logs
           path: e2e-api-logs/
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Upload e2e failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v4
+        with:
+          name: e2e-failure-diagnostics
+          path: '**/e2e-failure-diagnostics/**'
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Upload e2e vitest failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v4
+        with:
+          name: e2e-vitest-failure-diagnostics
+          path: '**/failure-diagnostics/**'
           retention-days: 7
           if-no-files-found: warn
 

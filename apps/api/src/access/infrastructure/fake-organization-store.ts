@@ -2,6 +2,7 @@ import { okAsync, errAsync, type ResultAsync } from 'neverthrow';
 import type { Organization } from '../domain/organization.js';
 import type { OrganizationStore } from '../domain/organization-store.js';
 import { organizationStorageError, type OrganizationStorageError } from '../domain/organization-errors.js';
+import { registerFailureState } from '../../platform/testing/failure-state.js';
 
 export type FakeOrganizationStoreOptions = {
   shouldFailOnSave?: boolean;
@@ -13,6 +14,7 @@ export const createFakeOrganizationStore = (
   options: FakeOrganizationStoreOptions = {}
 ): OrganizationStore => {
   const organizations: Organization[] = [...(options.initialOrganizations ?? [])];
+  registerFailureState('fakeOrganizationStore', () => organizations.map((organization) => ({ ...organization })));
 
   return {
     save: (organization: Organization): ResultAsync<void, OrganizationStorageError> => {

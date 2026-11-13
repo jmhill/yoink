@@ -205,7 +205,10 @@ export const attachObservedContext = async (context: BrowserContext): Promise<vo
     watchPage(page, item);
   }
   try {
-    await context.tracing.start({ screenshots: true, snapshots: true, sources: false });
+    // Snapshots serialize the DOM on every action. On a two-core CI runner that
+    // pushed a passing 19s test past its 30s limit. Action screenshots, the
+    // failure screenshot, and video still show what the page did.
+    await context.tracing.start({ screenshots: true, snapshots: false, sources: false });
     item.tracingOpen = true;
   } catch (error) {
     console.error('failure diagnostics: tracing did not start', error);
@@ -254,7 +257,7 @@ export const saveFailureDiagnostics = async (testName: string): Promise<void> =>
         }
         const name = `screenshot-${index}-${pageIndex}.png`;
         try {
-          await page.screenshot({ path: join(dir, name), fullPage: true });
+          await page.screenshot({ path: join(dir, name) });
           screenshots.push(name);
         } catch {
           // The page may already be closing.

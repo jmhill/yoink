@@ -530,7 +530,7 @@ A failing test writes files and does not retry, lengthen a timeout, or change th
 Playwright folder:
 
 - `report.json` — test name, actor emails (the `Date.now` suffix is the actor seed), browser console, page errors, and network calls that failed or took at least 1s.
-- `screenshot-*.png`, `trace-*.zip`, `video-*.webm` — open the zip with `npx playwright show-trace trace-0.zip`.
+- `screenshot-*.png`, `trace-*.zip`, `video-*.webm` — open the zip with `npx playwright show-trace trace-0.zip`. The trace has action screenshots, network, and console. It does not capture a DOM snapshot on every action, because that recording pushed a passing test past its timeout.
 - `api-log-window.log` — API JSON lines from just before the test until just after. Each line has `time` (epoch ms), `reqId`, `method`, `route`, `statusCode`, and `responseTime`. `slow_request` is a request of at least 1s. `event_loop_lag` is `p99Ms` or `maxMs` of at least 500; a multi-second `maxMs` is a frozen loop. `write_gate_wait` is how long a write waited on the gate (`waitedMs`).
 
 Vitest JSON: test name, `durationMs` (through the failure, including `beforeEach`), `sequenceSeed` (`null` means shuffle is off), and `fakeStores` when the test built a fake organization, user, membership, session, or token store. Token hashes are omitted. The same summary is printed to the Quality log as `vitest_failure`.

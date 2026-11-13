@@ -4,10 +4,10 @@ import type { IdGenerator } from '../../kernel/id-generator.js';
 import type { PasswordHasher } from '../../kernel/password-hasher.js';
 import type { CommitFailure, UnitOfWork } from '../../kernel/unit-of-work.js';
 import {
-  projectNotFoundError,
-  type ProjectNotFoundError,
-  type StorageError,
-} from '../../modules/task-management/domain/messages/project-errors.js';
+  adminProjectNotFoundError,
+  type AdminProjectNotFoundError,
+  type AdminProjectStorageError,
+} from '../domain/admin-errors.js';
 import type { AdminProject } from '../domain/admin-project.js';
 import type { AdminPlan } from '../domain/admin-plan.js';
 import type { ApiToken } from '../domain/api-token.js';
@@ -48,11 +48,11 @@ import type { UserStore } from '../domain/user-store.js';
 
 /** The two project reads and writes admin still calls. The task-management store stays internal. */
 type AdminProjectStore = {
-  findById(id: string): ResultAsync<AdminProject | null, StorageError>;
+  findById(id: string): ResultAsync<AdminProject | null, AdminProjectStorageError>;
   updateCreatedAt(
     id: string,
     createdAt: string
-  ): ResultAsync<void, StorageError | ProjectNotFoundError>;
+  ): ResultAsync<void, AdminProjectStorageError | AdminProjectNotFoundError>;
 };
 
 export type AdminServiceDependencies = {
@@ -226,7 +226,7 @@ export const createAdminService = (deps: AdminServiceDependencies): AdminService
     updateProjectCreatedAt(id: string, createdAt: string) {
       return deps.projectStore.updateCreatedAt(id, createdAt).andThen(() =>
         deps.projectStore.findById(id).andThen((project) =>
-          project ? okAsync(project) : errAsync(projectNotFoundError(id))
+          project ? okAsync(project) : errAsync(adminProjectNotFoundError(id))
         )
       );
     },

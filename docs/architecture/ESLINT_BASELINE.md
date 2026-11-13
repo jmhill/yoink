@@ -2,6 +2,10 @@
 
 The measurements below are the historical census. They are not regenerated. The API warning figure in the M2.4 table stays **177**.
 
+## Enforced baseline
+
+M7.5a ([#298](https://github.com/jmhill/yoink/issues/298)). The enforced baseline is **zero**. M7.5b confirms it after M6.5-web (#291), M6.5-admin (#292), and M5.8d (#257) land and `edges/legacy/` is gone. #298 stays open. ADR §10 rules are `error`: `boundaries/element-types`, `boundaries/entry-point`, `boundaries/external`, `boundaries/no-unknown`, and `no-restricted-imports`. `pnpm lint` runs inside `pnpm quality`. Pull-request CI and Trunk run `pnpm quality` (`.github/workflows/pr.yml`, `.github/workflows/trunk.yml`). The boundaries warning count is 0. The table-ownership allowlist file is gone. A cross-owner statement fails the architecture test. Web stays 31 warnings (`react-hooks/set-state-in-effect` 24, `react-hooks/exhaustive-deps` 7). Those are not ADR §10 rules and stay at `warn`.
+
 Resolved by [#328](https://github.com/jmhill/yoink/issues/328) in [#332](https://github.com/jmhill/yoink/pull/332) (`5f377b3c3cf12ec2b7137e31f5f79707a8c76651`). The four `@yoink/acceptance-tests` unused-local errors recorded below (`staged`, `mineMilk`, `eggs`, `bread`) are gone. Acceptance-test lint now runs in `pnpm quality`. The tables and counts stay the figures measured on those days.
 
 Measured **2026-11-06** on the M1.1 working tree branched from `ceeb49c6b0557837810fd927030ed049c6ea43ea` (`main`). `apps/api/eslint.config.js` in this change is the config under test. Counts come from the commands in [How this was measured](#how-this-was-measured). The current tree is the [M2.4 re-measure](#m24-re-measure). The sections under Result are the M1.1 census that re-measure is compared to.

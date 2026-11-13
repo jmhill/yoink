@@ -5,7 +5,6 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { legacyMigrationCutoffIs43, type Migration } from './database/types.js';
 import { migrations } from './database/migrations/index.js';
-import { TABLE_OWNERSHIP_ALLOWLIST } from './table-ownership.allowlist.js';
 import {
   FIXTURE_ROUTE_PATHS,
   LEGACY_MIGRATION_VERSION,
@@ -22,7 +21,6 @@ import {
   tableReferencesInLiteral,
   type ScannedSourceFile,
   type TableName,
-  type TableOwnershipAllowlistEntry,
 } from './table-ownership.js';
 
 const apiSrc = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -72,10 +70,6 @@ const scanned = (path: string, source: string): ScannedSourceFile => ({
   path,
   literals: stringLiteralsInTypescript(source),
 });
-
-const allow = (
-  entry: TableOwnershipAllowlistEntry
-): TableOwnershipAllowlistEntry => entry;
 
 describe('table reference heuristic', () => {
   it('matches the keyword forms this code actually writes, including joins and quotes', () => {
@@ -448,16 +442,15 @@ describe('test-support exemption', () => {
     expect(classifyApiPath('tests/helpers.ts')).toEqual({ kind: 'no-sql', area: 'tests' });
     expect(classifyApiPath('platform/database/migrator.ts')).toEqual({ kind: 'platform' });
 
-    const helper = checkTableOwnership([scanned('tests/helpers/seed.ts', HELPER_SQL)], []);
+    const helper = checkTableOwnership([scanned('tests/helpers/seed.ts', HELPER_SQL)]);
     expect(helper.violations).toEqual([]);
-    const testsRoot = checkTableOwnership([scanned('tests/seed.ts', HELPER_SQL)], []);
+    const testsRoot = checkTableOwnership([scanned('tests/seed.ts', HELPER_SQL)]);
     expect(testsRoot.violations).toEqual([
       { path: 'tests/seed.ts', keyword: 'INTO', table: 'user_sessions', count: 1 },
     ]);
-    const production = checkTableOwnership(
-      [scanned('captures/infrastructure/seed.ts', HELPER_SQL)],
-      []
-    );
+    const production = checkTableOwnership([
+      scanned('captures/infrastructure/seed.ts', HELPER_SQL),
+    ]);
     expect(production.violations).toEqual([
       {
         path: 'captures/infrastructure/seed.ts',
@@ -515,14 +508,14 @@ describe('test-support exemption', () => {
 });
 
 describe('planted ownership failures', () => {
-  it('fails a planted cross-owner statement that is not allowlisted', () => {
+  it('fails a planted cross-owner statement', () => {
     const files = [
       scanned(
         'tasks/infrastructure/planted.ts',
         'export const sql = "UPDATE captures SET deleted_at = ?";'
       ),
     ];
-    const report = checkTableOwnership(files, []);
+    const report = checkTableOwnership(files);
     expect(report.violations).toEqual([
       {
         path: 'tasks/infrastructure/planted.ts',
@@ -531,17 +524,9 @@ describe('planted ownership failures', () => {
         count: 1,
       },
     ]);
-    expect(report.staleAllowlist).toEqual([]);
   });
 
-  it('does not let an allowlisted file hide a different table or a higher count', () => {
-    const covered = allow({
-      path: 'tasks/infrastructure/planted.ts',
-      keyword: 'UPDATE',
-      table: 'captures',
-      count: 1,
-      removedBy: 'M5.5',
-    });
+  it('counts every planted statement, including a second table', () => {
     const files = [
       scanned(
         'tasks/infrastructure/planted.ts',
@@ -552,7 +537,7 @@ describe('planted ownership failures', () => {
         `
       ),
     ];
-    const report = checkTableOwnership(files, [covered]);
+    const report = checkTableOwnership(files);
     expect(report.violations).toEqual([
       {
         path: 'tasks/infrastructure/planted.ts',
@@ -567,20 +552,6 @@ describe('planted ownership failures', () => {
         count: 2,
       },
     ]);
-    expect(report.staleAllowlist).toEqual([covered]);
-  });
-
-  it('fails a stale allowlist entry that no longer matches a hit', () => {
-    const stale = allow({
-      path: 'tasks/infrastructure/gone.ts',
-      keyword: 'UPDATE',
-      table: 'captures',
-      count: 1,
-      removedBy: 'M5.5',
-    });
-    const report = checkTableOwnership([], [stale]);
-    expect(report.violations).toEqual([]);
-    expect(report.staleAllowlist).toEqual([stale]);
   });
 
   it('allows an owner\'s infrastructure, identity anchors, legacy migrations, and test fixtures', () => {
@@ -616,7 +587,7 @@ describe('planted ownership failures', () => {
       scanned('workflows/processing/domain/run.ts', 'export const sql = "FROM captures";'),
       scanned('tasks/infrastructure/own.test.ts', 'export const sql = "UPDATE captures SET x = 1";'),
     ];
-    const report = checkTableOwnership(files, []);
+    const report = checkTableOwnership(files);
     expect(report.violations).toEqual([
       {
         path: 'edges/web/inbox.ts',
@@ -658,12 +629,10 @@ describe('planted ownership failures', () => {
       mkdirSync(join(root, 'processing', 'infrastructure'), { recursive: true });
       const failures = collectOwnershipFailures({
         files: [],
-        allowlist: [],
         directories: listDirectories(root),
       });
       expect(failures.workflowInfrastructure).toEqual(['workflows/demo/infrastructure']);
       expect(failures.violations).toEqual([]);
-      expect(failures.staleAllowlist).toEqual([]);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -761,53 +730,25 @@ describe('current tree', () => {
   const files = scanSourceFiles(apiSrc);
   const directories = listDirectories(apiSrc);
 
-  it('passes with the checked-in allowlist and fails closed without it', () => {
-    const bare = checkTableOwnership(files, []);
-    expect(TABLE_OWNERSHIP_ALLOWLIST).toHaveLength(0);
-    expect(TABLE_OWNERSHIP_ALLOWLIST).toHaveLength(bare.violations.length);
+  it('passes the current tree and has no allowlist file', () => {
+    const bare = checkTableOwnership(files);
+    expect(bare.violations).toEqual([]);
+    expect(
+      existsSync(join(dirname(fileURLToPath(import.meta.url)), 'table-ownership.allowlist.ts'))
+    ).toBe(false);
     const helperHits = files
       .filter((file) => file.path.startsWith('tests/helpers/'))
       .flatMap((file) => file.literals.flatMap(tableReferencesInLiteral));
     expect(helperHits.length).toBeGreaterThan(0);
     expect(
-      checkTableOwnership(
-        files.filter((file) => file.path.startsWith('tests/helpers/')),
-        []
-      ).violations
+      checkTableOwnership(files.filter((file) => file.path.startsWith('tests/helpers/'))).violations
     ).toEqual([]);
     const failures = collectOwnershipFailures({
       files,
-      allowlist: TABLE_OWNERSHIP_ALLOWLIST,
       directories,
     });
     expect(failures.violations).toEqual([]);
-    expect(failures.staleAllowlist).toEqual([]);
     expect(failures.workflowInfrastructure).toEqual([]);
-  });
-
-  it('comments every allowlist entry with the task that removes it', () => {
-    const source = readFileSync(
-      join(dirname(fileURLToPath(import.meta.url)), 'table-ownership.allowlist.ts'),
-      'utf8'
-    );
-    const lines = source.split('\n');
-    let entries = 0;
-    for (const [index, line] of lines.entries()) {
-      const match = /removedBy: '([^']+)'/.exec(line);
-      if (match?.[1] === undefined) {
-        continue;
-      }
-      entries += 1;
-      const task = match[1];
-      expect(task).toMatch(/^M\d+\.\d+(?:-[a-z0-9]+)?$/);
-      const nearby = lines.slice(Math.max(0, index - 12), index).join('\n');
-      expect(nearby).toContain(`// ${task}`);
-    }
-    expect(entries).toBe(TABLE_OWNERSHIP_ALLOWLIST.length);
-    const keys = TABLE_OWNERSHIP_ALLOWLIST.map(
-      (entry) => `${entry.path}\0${entry.keyword}\0${entry.table}`
-    );
-    expect(new Set(keys).size).toBe(keys.length);
   });
 
   it('sees the known cross-owner statements in the files the issue names', () => {

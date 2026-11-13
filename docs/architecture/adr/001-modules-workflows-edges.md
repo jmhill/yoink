@@ -626,7 +626,7 @@ Two mounts that look plausible do not serve this contract:
 
 | Router | Paths |
 |---|---|
-| admin public, admin protected | `/api/admin/...` |
+| admin public, admin protected | `/admin-api/...` |
 | auth | `/api/auth/login/options`, `/api/auth/login/verify`, `/api/auth/logout`, `/api/auth/session` |
 | signup | `/api/auth/signup/options`, `/api/auth/signup/verify` |
 | passkey | `/api/auth/passkey/...` |
@@ -655,7 +655,7 @@ M3.1's frozen copy is `packages/api-contracts/src/public-api/v1/`. Each procedur
   - **Usage logging lives in `platform/logging`.** Edges add the token id, the client build or version, and the API version to each request's log context through `edges/_shared/`. The data stays in logs, so no new table is needed.
 - **Today's unversioned `/api/...` routes are sorted into two groups**, using a route inventory made in the migration:
   - **Integration routes** (usable with an API token, and used by bots, agents, tools or the extension) become a **deprecated alias of v1**.
-  - **Client-only routes** are never aliased into v1. These are admin (`/api/admin/...`), plus session, passkey, signup and invitation flows used only by the web app. They stay as legacy routes until their client has moved to its edge (`/admin-api/`, `/web-api/`), and are then removed.
+  - **Client-only routes** are never aliased into v1. These are admin (`/admin-api/...`), plus session, passkey, signup and invitation flows used only by the web app. Admin is on its edge. The web flows stay as legacy routes until their client has moved to `/web-api/`, and are then removed.
 - **How the alias is implemented:** the same v1 router is mounted a second time at `/api/`, covering integration routes only. A hook adds the deprecation headers and logs alias usage per token.
   - `/api/health` and the client-only legacy routes keep their own registrations, so they can't conflict with the alias.
   - `v1` can never be used as a top-level resource name.

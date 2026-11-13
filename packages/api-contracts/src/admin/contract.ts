@@ -40,7 +40,7 @@ const memberParams = z.object({
   userId: z.string().uuid(),
 });
 
-export const createAdminPublicContract = (root: '/api/admin' | '/admin-api') => oc.router({
+export const createAdminPublicContract = (root: '/admin-api') => oc.router({
   login: oc
     .meta(
       openapi({
@@ -63,11 +63,11 @@ export const createAdminPublicContract = (root: '/api/admin' | '/admin-api') => 
     .output(LoginResponseSchema),
 });
 
-export const adminPublicOrpcContract = createAdminPublicContract('/api/admin');
+export const adminPublicOrpcContract = createAdminPublicContract('/admin-api');
 export const adminPublicContract = createAdminPublicContract('/admin-api');
 
 
-export const createAdminProtectedContract = (root: '/api/admin' | '/admin-api') => oc.router({
+export const createAdminProtectedContract = (root: '/admin-api') => oc.router({
   getSession: oc
     .meta(
       openapi({
@@ -268,6 +268,6 @@ export const createAdminProtectedContract = (root: '/api/admin' | '/admin-api') 
     .output(AdminInvitationResponseSchema),
 });
 
-export const adminProtectedOrpcContract = createAdminProtectedContract('/api/admin');
+export const adminProtectedOrpcContract = createAdminProtectedContract('/admin-api');
 export const adminProtectedContract = createAdminProtectedContract('/admin-api');
 

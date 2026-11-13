@@ -341,7 +341,7 @@ export const createApp = async (deps: AppDependencies) => {
     });
   }
 
-  // Admin session auth. `/api/admin` stays until M6.5. The admin app uses `/admin-api`.
+  // Admin session auth. The admin app uses `/admin-api`.
   if (deps.admin) {
     await registerAdminRoutes(
       app,

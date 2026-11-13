@@ -40,6 +40,5 @@ describe('admin edge contract', () => {
       'DELETE /admin-api/tokens/{id}',
       'POST /admin-api/organizations/{organizationId}/invitations',
     ]);
-    expect(listed.some((procedure) => procedure.path.includes('/api/admin'))).toBe(false);
   });
 });

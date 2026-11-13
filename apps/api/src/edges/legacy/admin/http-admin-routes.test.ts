@@ -19,8 +19,8 @@ import { ADMIN_SESSION_COOKIE } from '../../_shared/auth/admin-session-middlewar
 
 const UNKNOWN_USER_ID = '550e8400-e29b-41d4-a716-446655440099';
 const UNKNOWN_PROJECT_ID = '550e8400-e29b-41d4-a716-446655440098';
-const PATCH_USER_URL = `/api/admin/users/${TEST_USER_ID}`;
-const PATCH_PROJECT_URL = `/api/admin/projects/${UNKNOWN_PROJECT_ID}`;
+const PATCH_USER_URL = `/admin-api/users/${TEST_USER_ID}`;
+const PATCH_PROJECT_URL = `/admin-api/projects/${UNKNOWN_PROJECT_ID}`;
 const BACKDATED_CREATED_AT = '2026-10-09T12:00:00.000Z';
 
 describe('admin HTTP routes', () => {
@@ -33,7 +33,7 @@ describe('admin HTTP routes', () => {
   const loginAdmin = async () => {
     const login = await app.inject({
       method: 'POST',
-      url: '/api/admin/login',
+      url: '/admin-api/login',
       payload: { password: TEST_ADMIN_PASSWORD },
     });
     expect(login.statusCode).toBe(200);
@@ -81,7 +81,7 @@ describe('admin HTTP routes', () => {
       cookies: input.cookies,
     });
 
-  describe('PATCH /api/admin/users/:id', () => {
+  describe('PATCH /admin-api/users/:id', () => {
     it('returns 401 without an admin login', async () => {
       const response = await patchName({});
       expect(response.statusCode).toBe(401);
@@ -112,7 +112,7 @@ describe('admin HTTP routes', () => {
     it('returns 404 for an unknown id', async () => {
       const cookies = await loginAdmin();
       const response = await patchName({
-        url: `/api/admin/users/${UNKNOWN_USER_ID}`,
+        url: `/admin-api/users/${UNKNOWN_USER_ID}`,
         cookies,
       });
       expect(response.statusCode).toBe(404);
@@ -130,7 +130,7 @@ describe('admin HTTP routes', () => {
       const cookies = await loginAdmin();
       const created = await app.inject({
         method: 'POST',
-        url: `/api/admin/organizations/${TEST_ORG_ID}/users`,
+        url: `/admin-api/organizations/${TEST_ORG_ID}/users`,
         cookies,
         payload: { email: 'alice@example.com', role: 'member' },
       });
@@ -138,7 +138,7 @@ describe('admin HTTP routes', () => {
       const user = created.json<{ id: string }>();
 
       const response = await patchName({
-        url: `/api/admin/users/${user.id}`,
+        url: `/admin-api/users/${user.id}`,
         cookies,
         payload: { name: 'Alice' },
       });
@@ -151,7 +151,7 @@ describe('admin HTTP routes', () => {
     });
   });
 
-  describe('PATCH /api/admin/projects/:id', () => {
+  describe('PATCH /admin-api/projects/:id', () => {
     it('returns 401 without an admin login', async () => {
       const response = await patchCreatedAt({});
       expect(response.statusCode).toBe(401);
@@ -207,7 +207,7 @@ describe('admin HTTP routes', () => {
       expect(project.createdAt).not.toBe(BACKDATED_CREATED_AT);
 
       const patched = await patchCreatedAt({
-        url: `/api/admin/projects/${project.id}`,
+        url: `/admin-api/projects/${project.id}`,
         cookies,
         payload: { createdAt: BACKDATED_CREATED_AT },
       });
@@ -235,7 +235,7 @@ describe('admin HTTP routes', () => {
       const cookies = await loginAdmin();
       const org = await app.inject({
         method: 'POST',
-        url: '/api/admin/organizations',
+        url: '/admin-api/organizations',
         cookies,
         payload: { name: 'Polly UX', ownerEmail: 'pending-polly@example.com' },
       });
@@ -244,7 +244,7 @@ describe('admin HTTP routes', () => {
 
       const invite = await app.inject({
         method: 'POST',
-        url: `/api/admin/organizations/${orgId}/invitations`,
+        url: `/admin-api/organizations/${orgId}/invitations`,
         cookies,
         payload: { role: 'member' },
       });
@@ -261,7 +261,7 @@ describe('admin HTTP routes', () => {
 
       const setOwner = await app.inject({
         method: 'PUT',
-        url: `/api/admin/organizations/${orgId}/owner`,
+        url: `/admin-api/organizations/${orgId}/owner`,
         cookies,
         payload: { userId: TEST_USER_ID },
       });
@@ -289,7 +289,7 @@ describe('admin HTTP routes', () => {
       const cookies = await loginAdmin();
       const org = await app.inject({
         method: 'POST',
-        url: '/api/admin/organizations',
+        url: '/admin-api/organizations',
         cookies,
         payload: { name: 'Handover', ownerEmail: 'pending-handover@example.com' },
       });
@@ -297,13 +297,13 @@ describe('admin HTTP routes', () => {
 
       const first = await app.inject({
         method: 'POST',
-        url: `/api/admin/organizations/${orgId}/users`,
+        url: `/admin-api/organizations/${orgId}/users`,
         cookies,
         payload: { email: 'first-owner@example.com', role: 'member' },
       });
       const second = await app.inject({
         method: 'POST',
-        url: `/api/admin/organizations/${orgId}/users`,
+        url: `/admin-api/organizations/${orgId}/users`,
         cookies,
         payload: { email: 'next-owner@example.com', role: 'member' },
       });
@@ -316,7 +316,7 @@ describe('admin HTTP routes', () => {
         (
           await app.inject({
             method: 'PUT',
-            url: `/api/admin/organizations/${orgId}/owner`,
+            url: `/admin-api/organizations/${orgId}/owner`,
             cookies,
             payload: { userId: firstId },
           })
@@ -325,7 +325,7 @@ describe('admin HTTP routes', () => {
 
       const transferred = await app.inject({
         method: 'PUT',
-        url: `/api/admin/organizations/${orgId}/owner`,
+        url: `/admin-api/organizations/${orgId}/owner`,
         cookies,
         payload: { userId: secondId },
       });
@@ -334,7 +334,7 @@ describe('admin HTTP routes', () => {
 
       const listed = await app.inject({
         method: 'GET',
-        url: `/api/admin/organizations/${orgId}/users`,
+        url: `/admin-api/organizations/${orgId}/users`,
         cookies,
       });
       const users = listed.json<{ users: Array<{ id: string; role?: string }> }>().users;
@@ -350,28 +350,28 @@ describe('admin HTTP routes', () => {
       const cookies = await loginAdmin();
       const org = await app.inject({
         method: 'POST',
-        url: '/api/admin/organizations',
+        url: '/admin-api/organizations',
         cookies,
         payload: { name: 'Guards', ownerEmail: 'pending-guards@example.com' },
       });
       const { id: orgId } = org.json<{ organization: { id: string } }>().organization;
       const created = await app.inject({
         method: 'POST',
-        url: `/api/admin/organizations/${orgId}/users`,
+        url: `/admin-api/organizations/${orgId}/users`,
         cookies,
         payload: { email: 'keep-owner@example.com', role: 'member' },
       });
       const userId = created.json<{ id: string }>().id;
       await app.inject({
         method: 'PUT',
-        url: `/api/admin/organizations/${orgId}/owner`,
+        url: `/admin-api/organizations/${orgId}/owner`,
         cookies,
         payload: { userId },
       });
 
       const demote = await app.inject({
         method: 'PATCH',
-        url: `/api/admin/organizations/${orgId}/members/${userId}`,
+        url: `/admin-api/organizations/${orgId}/members/${userId}`,
         cookies,
         payload: { role: 'member' },
       });
@@ -382,7 +382,7 @@ describe('admin HTTP routes', () => {
 
       const botAdmin = await app.inject({
         method: 'POST',
-        url: `/api/admin/organizations/${orgId}/users`,
+        url: `/admin-api/organizations/${orgId}/users`,
         cookies,
         payload: { email: 'bot@example.com', kind: 'agent', role: 'admin', name: 'Nope' },
       });
@@ -391,7 +391,7 @@ describe('admin HTTP routes', () => {
 
       const botMember = await app.inject({
         method: 'POST',
-        url: `/api/admin/organizations/${orgId}/users`,
+        url: `/admin-api/organizations/${orgId}/users`,
         cookies,
         payload: { email: 'lane@example.com', kind: 'agent', name: 'Lane' },
       });
@@ -399,7 +399,7 @@ describe('admin HTTP routes', () => {
       const botId = botMember.json<{ id: string }>().id;
       const promoteBot = await app.inject({
         method: 'PATCH',
-        url: `/api/admin/organizations/${orgId}/members/${botId}`,
+        url: `/admin-api/organizations/${orgId}/members/${botId}`,
         cookies,
         payload: { role: 'admin' },
       });
@@ -408,7 +408,7 @@ describe('admin HTTP routes', () => {
 
       const still = await app.inject({
         method: 'GET',
-        url: `/api/admin/organizations/${orgId}/users`,
+        url: `/admin-api/organizations/${orgId}/users`,
         cookies,
       });
       expect(
@@ -420,7 +420,7 @@ describe('admin HTTP routes', () => {
       const cookies = await loginAdmin();
       const org = await app.inject({
         method: 'POST',
-        url: '/api/admin/organizations',
+        url: '/admin-api/organizations',
         cookies,
         payload: { name: 'Missing user', ownerEmail: 'pending-missing@example.com' },
       });
@@ -428,7 +428,7 @@ describe('admin HTTP routes', () => {
 
       const missing = await app.inject({
         method: 'PUT',
-        url: `/api/admin/organizations/${orgId}/owner`,
+        url: `/admin-api/organizations/${orgId}/owner`,
         cookies,
         payload: { userId: UNKNOWN_USER_ID },
       });
@@ -440,14 +440,14 @@ describe('admin HTTP routes', () => {
       const cookies = await loginAdmin();
       const org = await app.inject({
         method: 'POST',
-        url: '/api/admin/organizations',
+        url: '/admin-api/organizations',
         cookies,
         payload: { name: 'Bot owner', ownerEmail: 'pending-bot-owner@example.com' },
       });
       const { id: orgId } = org.json<{ organization: { id: string } }>().organization;
       const bot = await app.inject({
         method: 'POST',
-        url: `/api/admin/organizations/${orgId}/users`,
+        url: `/admin-api/organizations/${orgId}/users`,
         cookies,
         payload: { email: 'lane@example.com', kind: 'agent', name: 'Lane' },
       });
@@ -456,7 +456,7 @@ describe('admin HTTP routes', () => {
 
       const setOwner = await app.inject({
         method: 'PUT',
-        url: `/api/admin/organizations/${orgId}/owner`,
+        url: `/admin-api/organizations/${orgId}/owner`,
         cookies,
         payload: { userId: botId },
       });
@@ -469,7 +469,7 @@ describe('admin HTTP routes', () => {
       const cookies = await loginAdmin();
       const org = await app.inject({
         method: 'POST',
-        url: '/api/admin/organizations',
+        url: '/admin-api/organizations',
         cookies,
         payload: { name: 'Non-member owner', ownerEmail: 'pending-non-member@example.com' },
       });
@@ -477,7 +477,7 @@ describe('admin HTTP routes', () => {
 
       const outsider = await app.inject({
         method: 'PUT',
-        url: `/api/admin/organizations/${orgId}/owner`,
+        url: `/admin-api/organizations/${orgId}/owner`,
         cookies,
         payload: { userId: TEST_USER_ID },
       });
@@ -490,20 +490,20 @@ describe('admin HTTP routes', () => {
       const cookies = await loginAdmin();
       const org = await app.inject({
         method: 'POST',
-        url: '/api/admin/organizations',
+        url: '/admin-api/organizations',
         cookies,
         payload: { name: 'Switch', ownerEmail: 'pending-switch@example.com' },
       });
       const { id: orgId } = org.json<{ organization: { id: string } }>().organization;
       const owner = await app.inject({
         method: 'POST',
-        url: `/api/admin/organizations/${orgId}/users`,
+        url: `/admin-api/organizations/${orgId}/users`,
         cookies,
         payload: { email: 'switch-owner@example.com', role: 'member' },
       });
       const created = await app.inject({
         method: 'POST',
-        url: `/api/admin/organizations/${orgId}/users`,
+        url: `/admin-api/organizations/${orgId}/users`,
         cookies,
         payload: { email: 'switch@example.com', role: 'member' },
       });
@@ -513,7 +513,7 @@ describe('admin HTTP routes', () => {
         (
           await app.inject({
             method: 'PUT',
-            url: `/api/admin/organizations/${orgId}/owner`,
+            url: `/admin-api/organizations/${orgId}/owner`,
             cookies,
             payload: { userId: ownerId },
           })
@@ -522,7 +522,7 @@ describe('admin HTTP routes', () => {
 
       const toAdmin = await app.inject({
         method: 'PATCH',
-        url: `/api/admin/organizations/${orgId}/members/${userId}`,
+        url: `/admin-api/organizations/${orgId}/members/${userId}`,
         cookies,
         payload: { role: 'admin' },
       });
@@ -531,7 +531,7 @@ describe('admin HTTP routes', () => {
 
       const toMember = await app.inject({
         method: 'PATCH',
-        url: `/api/admin/organizations/${orgId}/members/${userId}`,
+        url: `/admin-api/organizations/${orgId}/members/${userId}`,
         cookies,
         payload: { role: 'member' },
       });
@@ -543,14 +543,14 @@ describe('admin HTTP routes', () => {
       const cookies = await loginAdmin();
       const org = await app.inject({
         method: 'POST',
-        url: '/api/admin/organizations',
+        url: '/admin-api/organizations',
         cookies,
         payload: { name: 'Ownerless', ownerEmail: 'pending-ownerless@example.com' },
       });
       const { id: orgId } = org.json<{ organization: { id: string } }>().organization;
       const created = await app.inject({
         method: 'POST',
-        url: `/api/admin/organizations/${orgId}/users`,
+        url: `/admin-api/organizations/${orgId}/users`,
         cookies,
         payload: { email: 'only-admin@example.com', role: 'admin' },
       });
@@ -559,7 +559,7 @@ describe('admin HTTP routes', () => {
 
       const demote = await app.inject({
         method: 'PATCH',
-        url: `/api/admin/organizations/${orgId}/members/${userId}`,
+        url: `/admin-api/organizations/${orgId}/members/${userId}`,
         cookies,
         payload: { role: 'member' },
       });
@@ -610,7 +610,7 @@ describe('admin HTTP routes', () => {
     it('keeps the legacy login status and body', async () => {
       const login = await app.inject({
         method: 'POST',
-        url: '/api/admin/login',
+        url: '/admin-api/login',
         payload: { password: 'wrong-password' },
       });
       expect(login.statusCode).toBe(401);

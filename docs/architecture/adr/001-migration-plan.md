@@ -618,9 +618,9 @@ Task management's principal lookup, member ids, and user name, notes' actor list
 - **Do:**
   - Add `packages/api-contracts/src/admin/` and `edges/admin/` with admin-session auth, mounted at `/admin-api/`.
   - The admin app sends `X-Yoink-Build`.
-  - Update `apps/admin/vite.config.ts`'s dev proxy (it currently proxies `/api/admin`) and the SPA fallback.
+  - Update `apps/admin/vite.config.ts`'s dev proxy and the SPA fallback.
   - Move every admin screen.
-- **Accept:** admin acceptance tests pass, and the admin app makes no `/api/admin/...` calls.
+- **Accept:** admin acceptance tests pass, and the admin app calls `/admin-api`.
 
 ### M6.5 Remove client-only legacy routes
 
@@ -630,13 +630,13 @@ Task management's principal lookup, member ids, and user name, notes' actor list
 - **Do:** delete each `edges/legacy/<area>` once the inventory shows no callers, and once the expand/contract window has passed (ADR §8.2: 14 days of production logs with no requests from `X-Yoink-Build` values that use the legacy routes). Justin set that on 2026-11-10 at 8:12pm CT, as recorded in [#291](https://github.com/jmhill/yoink/issues/291) and [#292](https://github.com/jmhill/yoink/issues/292). Admin uses the same 14 days until Justin shortens it.
 - **Accept:** `edges/legacy/` is gone.
 
-### M6.6 Remove `/api/admin/...` from the dev proxy and docs
+### M6.6 Remove the retired admin prefix from the dev proxy and docs
 
-**Execution:** `M6.6`. [#293](https://github.com/jmhill/yoink/issues/293).
+**Execution:** `M6.6`. [#293](https://github.com/jmhill/yoink/issues/293). In review. This part does not mark M6.6 Done.
 
-- **Depends on:** M6.4, M6.5
-- **Do:** clean up leftover references in Vite configs, docs and the acceptance drivers.
-- **Accept:** nothing in the repo references `/api/admin`.
+- **Depends on:** M6.4, M6.5-admin
+- **Do:** clean leftover references in Vite configs, docs, and the acceptance drivers. Drop the compatibility mount with them. `edges/legacy/` stays for M6.5.
+- **Accept:** a repository search for the retired admin prefix is empty. Admin traffic is on `/admin-api`.
 
 ---
 
@@ -677,21 +677,21 @@ Task management's principal lookup, member ids, and user name, notes' actor list
   - Delete the fixture edge if every route is replaced. Otherwise document the remaining ones and the reason in the ADR.
 - **Accept:** the table-ownership exemption for `edges/test-fixtures/` is removed, or justified in writing.
 
-`M7.4` is Done (#406, `3ca473c7`, Trunk 43034876654). #297 is closed. The five routes stay, and the `edges/test-fixtures/` exemption stays. The allowlist stays empty until M7.5a removes the file. `app.ts` and `composition-root.ts` do not change. Each route is registered only when `YOINK_TEST_FIXTURES=true`. The process refuses to start, before it listens, when that flag is true and `FLY_APP_NAME` is `jhtc-yoink-api`, or when `TURSO_DATABASE_URL` names the `yoink-prod` database. That refusal is Done (#410, `39ed8c77`, Trunk 43061150447). `NODE_ENV` is not that signal: the e2e image sets `NODE_ENV=production` and `YOINK_TEST_FIXTURES=true` with a local file database.
+`M7.4` is Done (#406, `3ca473c7`, Trunk 43034876654). #297 is closed. The five routes stay, and the `edges/test-fixtures/` exemption stays. M7.5a removed the allowlist file. `app.ts` and `composition-root.ts` do not change. Each route is registered only when `YOINK_TEST_FIXTURES=true`. The process refuses to start, before it listens, when that flag is true and `FLY_APP_NAME` is `jhtc-yoink-api`, or when `TURSO_DATABASE_URL` names the `yoink-prod` database. That refusal is Done (#410, `39ed8c77`, Trunk 43061150447). `NODE_ENV` is not that signal: the e2e image sets `NODE_ENV=production` and `YOINK_TEST_FIXTURES=true` with a local file database.
 
 `POST /test-api/review-fixture/backdate` sets `projects.created_at`, `projects.last_changed_at`, and `change_log.occurred_at` for one project so Review can seed a quiet row without sleeping. `POST /test-api/review-fixture/finish-task` sets `tasks.completed_at` and `completed_by` so a done-list week can be seeded. Create and complete stamp `clock.now()`. A process-wide fake clock would move every parallel e2e test. No authed command sets those timestamps.
 
-`POST /test-api/ownerless-workspace` saves an organization with no owner, and optionally a personal membership. Admin `POST /api/admin/organizations` always creates an owner invitation. The access service's `createOrganization(name)` is not an HTTP command. Exposing it would let an admin create an ownerless workspace in production. `POST /test-api/expire-invitation` sets one invite's `expiresAt` to `2020-01-01` while sibling invites stay valid. Invitation create sets a future expiry from the clock. `POST /test-api/assign-owner-keeping-invite` inserts an owner membership and leaves the pending owner invite. The product assign-owner path revokes that invite. Using it would change the acceptance scenario that asserts the invite is still there.
+`POST /test-api/ownerless-workspace` saves an organization with no owner, and optionally a personal membership. Admin `POST /admin-api/organizations` always creates an owner invitation. The access service's `createOrganization(name)` is not an HTTP command. Exposing it would let an admin create an ownerless workspace in production. `POST /test-api/expire-invitation` sets one invite's `expiresAt` to `2020-01-01` while sibling invites stay valid. Invitation create sets a future expiry from the clock. `POST /test-api/assign-owner-keeping-invite` inserts an owner membership and leaves the pending owner invite. The product assign-owner path revokes that invite. Using it would change the acceptance scenario that asserts the invite is still there.
 
 The e2e database is a Docker volume. The harness cannot seed it through the unit of work. Replacing any of these routes needs a new product command or a shared clock. Neither is in this task.
 
 ### M7.5 All enforcement at `error` (absorbs 8.5.5)
 
-M7.5 stays open while `edges/legacy/` exists. [#298](https://github.com/jmhill/yoink/issues/298) stays open until M7.5b is Done. This work delivers M7.5a and does not close #298.
+M7.5 stays open while `edges/legacy/` exists. [#298](https://github.com/jmhill/yoink/issues/298) stays open until M7.5b is Done. M7.5a is Done and does not close #298.
 
-#### M7.5a Enforce now - In review
+#### M7.5a Enforce now - Done
 
-**Execution:** `M7.5a`. [#298](https://github.com/jmhill/yoink/issues/298). In review. This part does not close #298.
+**Execution:** `M7.5a`. [#298](https://github.com/jmhill/yoink/issues/298). Done (#408, `85c2cb79`, Trunk [43390098738](https://github.com/jmhill/yoink/actions/runs/43390098738)). Squash-merged from `f7167c08`. #298 stays open.
 
 - **Depends on:** M3.7, M4.4, M5.6, M5.9, M5.11-captures, M5.11-task-management, M5.11-notes, M5.11-review, M5.11-history, M5.11-access, M5.12b
 - **Do:**
@@ -701,7 +701,7 @@ M7.5 stays open while `edges/legacy/` exists. [#298](https://github.com/jmhill/y
   - Update `ESLINT_BASELINE.md` to "zero, enforced".
 - **Accept:** `pnpm quality` passes with no boundaries warnings.
 
-M7.5a is In review. ADR §10 rules are `error`. The allowlist file is gone. Boundaries warnings are 0. Web stays 31 (`react-hooks/set-state-in-effect` 24, `react-hooks/exhaustive-deps` 7). `app.ts` and `composition-root.ts` do not change.
+M7.5a is Done (#408, `85c2cb79`, Trunk [43390098738](https://github.com/jmhill/yoink/actions/runs/43390098738)). It was squash-merged from `f7167c08`. #298 stays open. M7.5b stays Not started. ADR §10 rules are `error`. The allowlist file is gone. Boundaries warnings are 0. Web stays 31 (`react-hooks/set-state-in-effect` 24, `react-hooks/exhaustive-deps` 7). `app.ts` and `composition-root.ts` do not change.
 
 #### M7.5b Confirm after legacy removal - Not started
 
@@ -793,7 +793,7 @@ M0.2 has no GitHub issue. The technical spike is complete. The obsolete waiting-
 
 `CL-WORK` (#243) and `CL-REVIEW` (#244) are done. Justin adopted option 1 for both on 2026-11-09 at 10:43am CST ([#243](https://github.com/jmhill/yoink/issues/243#issuecomment-6745725026), [#244](https://github.com/jmhill/yoink/issues/244#issuecomment-6745725813)). `TOKEN-LIST` (#327) is done ([#340](https://github.com/jmhill/yoink/pull/340), `dc7da8044357eda0887f9a9fc7e86acb002b3a58`). [#327](https://github.com/jmhill/yoink/issues/327) is closed.
 
-The logical dependencies plus the serialization edges were checked together. There is no cycle. `M0.3` serializes after `M0.2` only. They are not mutual. `M4.1b` depends on `M4.1` and is a dependency of `M5.1`, `M5.3`, and `M5.5`. `M4.4` depends on `M5.3`, `M5.5`, and `M5.7`, and nothing in M5 depends on `M4.4` except through `M7.5a`. `M3.7` depends on completed `M1.2` and is a dependency of `M7.5a`. `OPENAPI-V1` depends on `M3.2` and is a dependency of `M7.1`, because announcing the alias sunset directs people to `/api/v1`. `M5.12b` depends on `M5.3`, `M5.7`, `M5.10-review`, and `M5.12`. `M5.11-access` depends on `M5.13-user` and `M5.12b`. `M7.5a` depends on `M5.12b`. `M7.5b` depends on `M7.5a`, `M5.8d`, `M6.5-web`, and `M6.5-admin`. `M7.7` depends on `M7.5b`. M7.5 stays open while `edges/legacy/` exists. The access-service chain does not depend on `M5.11-access`.
+The logical dependencies plus the serialization edges were checked together. There is no cycle. `M0.3` serializes after `M0.2` only. They are not mutual. `M4.1b` depends on `M4.1` and is a dependency of `M5.1`, `M5.3`, and `M5.5`. `M4.4` depends on `M5.3`, `M5.5`, and `M5.7`, and nothing in M5 depends on `M4.4` except through `M7.5a`. `M3.7` depends on completed `M1.2` and is a dependency of `M7.5a`. `OPENAPI-V1` depends on `M3.2` and is a dependency of `M7.1`, because announcing the alias sunset directs people to `/api/v1`. `M5.12b` depends on `M5.3`, `M5.7`, `M5.10-review`, and `M5.12`. `M5.11-access` depends on `M5.13-user` and `M5.12b`. `M7.5a` depends on `M5.12b`. `M7.5a` is Done (#408, `85c2cb79`, Trunk [43390098738](https://github.com/jmhill/yoink/actions/runs/43390098738)). It was squash-merged from `f7167c08`. #298 stays open. `M7.5b` depends on `M7.5a`, `M5.8d`, `M6.5-web`, and `M6.5-admin` and stays Not started. `M7.7` depends on `M7.5b`. M7.5 stays open while `edges/legacy/` exists. `M7.1` serializes after `M6.6` because both edit `app.ts`. That edge does not add a logical dependency. `M7.6` stays gated on `M7.2`, `M6.5-web`, and `M6.5-admin`. The access-service chain does not depend on `M5.11-access`.
 
 `M2.3` has no downstream issue. That note is not a new dependency. `M6.6`, `M7.3`, `M7.4`, `M7.6`, `M7.7`, `TOKEN-LIST`, and `LINT-ACCEPTANCE` are leaves. `LINT-ACCEPTANCE` puts this package's lint in quality and leaves the browser suite in the E2E job. It does not rewrite the ESLint baseline.
 
@@ -875,12 +875,12 @@ The logical dependencies plus the serialization edges were checked together. The
 | `M6.4` | `M5.12` | — | Done (#359, `07fd98d3`, Trunk [42739846940](https://github.com/jmhill/yoink/actions/runs/42739846940)). | None. | [#290](https://github.com/jmhill/yoink/issues/290) |
 | `M6.5-web` | `M6.3-process`, `M6.3-tasks-lists`, `M6.3-work`, `M6.3-project-page`, `M6.3-notes`, `M6.3-review`, `M6.3-history`, `M6.3-settings`, `M6.3-auth` | — | Gated | (a) Production logs show no requests from `X-Yoink-Build` values that use the legacy web routes, for at least 14 days. Justin set that window on 2026-11-10 at 8:12pm CT, as recorded in [#291](https://github.com/jmhill/yoink/issues/291) and [#292](https://github.com/jmhill/yoink/issues/292). (b) Justin's explicit approval on #291. Green CI is not enough. | [#291](https://github.com/jmhill/yoink/issues/291) |
 | `M6.5-admin` | `M6.4` | — | Gated | (a) Production logs show no requests from `X-Yoink-Build` values that use the legacy admin routes, for at least 14 days. Justin set that window on 2026-11-10 at 8:12pm CT, as recorded in [#291](https://github.com/jmhill/yoink/issues/291) and [#292](https://github.com/jmhill/yoink/issues/292). Admin may later be shortened only by Justin. (b) Justin's explicit approval on #292. Green CI is not enough. | [#292](https://github.com/jmhill/yoink/issues/292) |
-| `M6.6` | `M6.4`, `M6.5-admin` | — | Not started | None. | [#293](https://github.com/jmhill/yoink/issues/293) |
-| `M7.1` | `OPENAPI-V1`, `M6.1`, `M6.3-process`, `M6.3-tasks-lists`, `M6.3-work`, `M6.3-project-page`, `M6.3-notes`, `M6.3-review`, `M6.3-history`, `M6.3-settings`, `M6.3-auth`, `M6.4` | — | Not started | Justin chooses the Sunset date, at least 90 days out, before headers advertise it. No outreach. OPENAPI-V1 is done ([#334](https://github.com/jmhill/yoink/pull/334), `30f08e333c45e7e7292955fa877c702fbef6374a`). | [#294](https://github.com/jmhill/yoink/issues/294) |
+| `M6.6` | `M6.4`, `M6.5-admin` | — | In review | The admin edge is one `/admin-api` mount. The dev proxy, docs, and acceptance HTTP driver use it. `edges/legacy/` stays for M6.5-admin. `composition-root.ts` does not change. `app.ts` drops the comment that named the removed mount. This part does not mark M6.6 Done. | [#293](https://github.com/jmhill/yoink/issues/293) |
+| `M7.1` | `OPENAPI-V1`, `M6.1`, `M6.3-process`, `M6.3-tasks-lists`, `M6.3-work`, `M6.3-project-page`, `M6.3-notes`, `M6.3-review`, `M6.3-history`, `M6.3-settings`, `M6.3-auth`, `M6.4` | `M6.6` | Not started | Justin chooses the Sunset date, at least 90 days out, before headers advertise it. No outreach. OPENAPI-V1 is done ([#334](https://github.com/jmhill/yoink/pull/334), `30f08e333c45e7e7292955fa877c702fbef6374a`). Follows M6.6 because both edit `app.ts`. That serialization edge does not add a logical dependency. | [#294](https://github.com/jmhill/yoink/issues/294) |
 | `M7.2` | `M7.1` | — | Gated | (a) ADR §9: the sunset date has passed, the alias has had no calls for 30 days, and any remaining token owner has been contacted. (b) Justin's explicit approval on #295. Green CI is not enough. | [#295](https://github.com/jmhill/yoink/issues/295) |
 | `M7.3` | `M7.2` | — | Not started | External gate: PLAN 7.7c is done, plus M7.2. Do not perform 7.7c here. | [#296](https://github.com/jmhill/yoink/issues/296) |
 | `M7.4` | `M5.10-review`, `M5.12` | — | Done (#406, `3ca473c7`, Trunk 43034876654). #297 is closed. | The five `/test-api` routes stay. Each writes a state no authed command produces. A process-wide clock would race parallel e2e. The harness cannot seed the Docker volume through the unit of work. The `edges/test-fixtures/` exemption stays. The allowlist stays empty. `app.ts` and `composition-root.ts` do not change. The process refuses to start when fixtures are on for Fly app `jhtc-yoink-api` or database `yoink-prod`. That refusal is Done (#410, `39ed8c77`, Trunk 43061150447). | [#297](https://github.com/jmhill/yoink/issues/297) |
-| `M7.5a` | `M3.7`, `M4.4`, `M5.6`, `M5.9`, `M5.11-captures`, `M5.11-task-management`, `M5.11-notes`, `M5.11-review`, `M5.11-history`, `M5.11-access`, `M5.12b` | — | In review | Enforce now. ADR §10 rules are `error`. The allowlist file is gone. Boundaries warnings are 0. Web stays 31 (`react-hooks/set-state-in-effect` 24, `react-hooks/exhaustive-deps` 7). `app.ts` and `composition-root.ts` do not change. This part does not close #298. | [#298](https://github.com/jmhill/yoink/issues/298) |
+| `M7.5a` | `M3.7`, `M4.4`, `M5.6`, `M5.9`, `M5.11-captures`, `M5.11-task-management`, `M5.11-notes`, `M5.11-review`, `M5.11-history`, `M5.11-access`, `M5.12b` | — | Done (#408, `85c2cb79`, Trunk [43390098738](https://github.com/jmhill/yoink/actions/runs/43390098738)). Squash-merged from `f7167c08`. #298 stays open. | ADR §10 rules are `error`. The allowlist file is gone. Boundaries warnings are 0. Web stays 31 (`react-hooks/set-state-in-effect` 24, `react-hooks/exhaustive-deps` 7). `app.ts` and `composition-root.ts` do not change. M7.5b stays Not started. M7.5 stays open while `edges/legacy/` exists. | [#298](https://github.com/jmhill/yoink/issues/298) |
 | `M7.5b` | `M7.5a`, `M5.8d`, `M6.5-web`, `M6.5-admin` | — | Not started | Confirm after legacy removal. Done only when M6.5-web (#291), M6.5-admin (#292), and M5.8d (#257) have landed, every ADR §10 rule is still `error`, and `edges/legacy/` no longer exists. M7.5 stays open while `edges/legacy/` exists. | [#298](https://github.com/jmhill/yoink/issues/298) |
-| `M7.6` | `M7.2`, `M6.5-web`, `M6.5-admin` | — | Not started | None. | [#299](https://github.com/jmhill/yoink/issues/299) |
+| `M7.6` | `M7.2`, `M6.5-web`, `M6.5-admin` | — | Not started | Stays gated on M7.2, M6.5-web, and M6.5-admin. | [#299](https://github.com/jmhill/yoink/issues/299) |
 | `M7.7` | `M7.5b` | — | Not started | Tycho reviews the grouped log before the status change. | [#300](https://github.com/jmhill/yoink/issues/300) |

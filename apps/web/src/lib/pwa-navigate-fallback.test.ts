@@ -38,7 +38,7 @@ describe('isPwaNavigateFallbackDenied', () => {
     expect(isPwaNavigateFallbackDenied(pathnameAndSearch)).toBe(true);
   });
 
-  it.each(['/api', '/api/', '/api/tasks', '/api/admin/session'])(
+  it.each(['/api', '/api/', '/api/tasks', '/admin-api/session'])(
     'denies API navigation %s',
     (pathnameAndSearch) => {
       expect(isPwaNavigateFallbackDenied(pathnameAndSearch)).toBe(true);

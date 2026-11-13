@@ -22,7 +22,6 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/api/admin': 'http://localhost:3000',
       '/admin-api': 'http://localhost:3000',
       '/extension-api': 'http://localhost:3000',
       '/test-api': 'http://localhost:3000',

@@ -98,7 +98,7 @@ describe('owner invite HTTP routes', () => {
   const loginAdmin = async () => {
     const login = await app.inject({
       method: 'POST',
-      url: '/api/admin/login',
+      url: '/admin-api/login',
       payload: { password: TEST_ADMIN_PASSWORD },
     });
     expect(login.statusCode).toBe(200);
@@ -110,7 +110,7 @@ describe('owner invite HTTP routes', () => {
   const createHuman = async (cookies: Record<string, string>, email: string, name: string) => {
     const created = await app.inject({
       method: 'POST',
-      url: `/api/admin/organizations/${TEST_ORG_ID}/users`,
+      url: `/admin-api/organizations/${TEST_ORG_ID}/users`,
       cookies,
       payload: { email, name, role: 'member', kind: 'human' },
     });
@@ -123,7 +123,7 @@ describe('owner invite HTTP routes', () => {
     const justin = await createHuman(cookies, 'justin@example.com', 'Justin');
     const created = await app.inject({
       method: 'POST',
-      url: '/api/admin/organizations',
+      url: '/admin-api/organizations',
       cookies,
       payload: { name: 'Garden Club', ownerEmail: justin.email },
     });
@@ -143,7 +143,7 @@ describe('owner invite HTTP routes', () => {
     const cookies = await loginAdmin();
     const created = await app.inject({
       method: 'POST',
-      url: '/api/admin/organizations',
+      url: '/admin-api/organizations',
       cookies,
       payload: { name: 'Garden Club', ownerEmail: 'Libby@Example.com' },
     });
@@ -161,7 +161,7 @@ describe('owner invite HTTP routes', () => {
     const cookies = await loginAdmin();
     const created = await app.inject({
       method: 'POST',
-      url: '/api/admin/organizations',
+      url: '/admin-api/organizations',
       cookies,
       payload: { name: 'Garden Club' },
     });
@@ -176,7 +176,7 @@ describe('owner invite HTTP routes', () => {
     const cookies = await loginAdmin();
     const bot = await app.inject({
       method: 'POST',
-      url: `/api/admin/organizations/550e8400-e29b-41d4-a716-446655440001/users`,
+      url: `/admin-api/organizations/550e8400-e29b-41d4-a716-446655440001/users`,
       cookies,
       payload: {
         email: 'lane@example.com',
@@ -188,7 +188,7 @@ describe('owner invite HTTP routes', () => {
     const botEmail = bot.json<{ email: string }>().email;
     const created = await app.inject({
       method: 'POST',
-      url: '/api/admin/organizations',
+      url: '/admin-api/organizations',
       cookies,
       payload: { name: 'Garden Club', ownerEmail: botEmail },
     });
@@ -203,7 +203,7 @@ describe('owner invite HTTP routes', () => {
     const cookies = await loginAdmin();
     const created = await app.inject({
       method: 'POST',
-      url: '/api/admin/organizations',
+      url: '/admin-api/organizations',
       cookies,
       payload: { name: 'Garden Club', ownerEmail: 'libby@example.com' },
     });
@@ -213,7 +213,7 @@ describe('owner invite HTTP routes', () => {
     }>();
     const issued = await app.inject({
       method: 'POST',
-      url: `/api/admin/organizations/${organization.id}/owner-invitation`,
+      url: `/admin-api/organizations/${organization.id}/owner-invitation`,
       cookies,
       payload: { email: 'libby@example.com' },
     });
@@ -237,14 +237,14 @@ describe('owner invite HTTP routes', () => {
     const cookies = await loginAdmin();
     const created = await app.inject({
       method: 'POST',
-      url: '/api/admin/organizations',
+      url: '/admin-api/organizations',
       cookies,
       payload: { name: 'Garden Club', ownerEmail: 'libby@example.com' },
     });
     const orgId = created.json<{ organization: { id: string } }>().organization.id;
     const fetched = await app.inject({
       method: 'GET',
-      url: `/api/admin/organizations/${orgId}/owner-invitation`,
+      url: `/admin-api/organizations/${orgId}/owner-invitation`,
       cookies,
     });
     expect(fetched.statusCode).toBe(200);
@@ -258,14 +258,14 @@ describe('owner invite HTTP routes', () => {
     const justin = await createHuman(cookies, 'justin-list@example.com', 'Justin');
     const owned = await app.inject({
       method: 'POST',
-      url: '/api/admin/organizations',
+      url: '/admin-api/organizations',
       cookies,
       payload: { name: 'Garden Club owned', ownerEmail: justin.email },
     });
     expect(owned.statusCode).toBe(201);
     const waiting = await app.inject({
       method: 'POST',
-      url: '/api/admin/organizations',
+      url: '/admin-api/organizations',
       cookies,
       payload: { name: 'Garden Club waiting', ownerEmail: 'libby-list@example.com' },
     });
@@ -280,7 +280,7 @@ describe('owner invite HTTP routes', () => {
     expect(ownerless.statusCode).toBe(201);
     const expired = await app.inject({
       method: 'POST',
-      url: '/api/admin/organizations',
+      url: '/admin-api/organizations',
       cookies,
       payload: { name: 'Garden Club expired', ownerEmail: 'libby-expired@example.com' },
     });
@@ -298,7 +298,7 @@ describe('owner invite HTTP routes', () => {
 
     const listed = await app.inject({
       method: 'GET',
-      url: '/api/admin/organizations',
+      url: '/admin-api/organizations',
       cookies,
     });
     expect(listed.statusCode).toBe(200);
@@ -338,7 +338,7 @@ describe('owner invite HTTP routes', () => {
 
     const fetchedExpired = await app.inject({
       method: 'GET',
-      url: `/api/admin/organizations/${expiredInvite.organization.id}/owner-invitation`,
+      url: `/admin-api/organizations/${expiredInvite.organization.id}/owner-invitation`,
       cookies,
     });
     expect(fetchedExpired.statusCode).toBe(200);
@@ -352,14 +352,14 @@ describe('owner invite HTTP routes', () => {
     const justin = await createHuman(cookies, 'justin@example.com', 'Justin');
     const created = await app.inject({
       method: 'POST',
-      url: '/api/admin/organizations',
+      url: '/admin-api/organizations',
       cookies,
       payload: { name: 'Garden Club', ownerEmail: justin.email },
     });
     const orgId = created.json<{ organization: { id: string } }>().organization.id;
     const issued = await app.inject({
       method: 'POST',
-      url: `/api/admin/organizations/${orgId}/owner-invitation`,
+      url: `/admin-api/organizations/${orgId}/owner-invitation`,
       cookies,
       payload: { email: 'libby@example.com' },
     });
@@ -374,7 +374,7 @@ describe('owner invite HTTP routes', () => {
     const cookies = await loginAdmin();
     const issued = await app.inject({
       method: 'POST',
-      url: `/api/admin/organizations/${UNKNOWN_ORG_ID}/owner-invitation`,
+      url: `/admin-api/organizations/${UNKNOWN_ORG_ID}/owner-invitation`,
       cookies,
       payload: { email: 'libby@example.com' },
     });
@@ -400,7 +400,7 @@ describe('owner invite HTTP routes', () => {
     const cookies = await loginAdmin();
     const created = await app.inject({
       method: 'POST',
-      url: '/api/admin/organizations',
+      url: '/admin-api/organizations',
       cookies,
       payload: { name: 'Garden Club', ownerEmail: 'libby@example.com' },
     });
@@ -411,7 +411,7 @@ describe('owner invite HTTP routes', () => {
 
     const memberInvite = await app.inject({
       method: 'POST',
-      url: `/api/admin/organizations/${orgId}/invitations`,
+      url: `/admin-api/organizations/${orgId}/invitations`,
       cookies,
       payload: { role: 'admin' },
     });
@@ -473,7 +473,7 @@ describe('owner invite HTTP routes', () => {
     const cookies = await loginAdmin();
     const created = await app.inject({
       method: 'POST',
-      url: '/api/admin/organizations',
+      url: '/admin-api/organizations',
       cookies,
       payload: { name: 'Garden Club', ownerEmail: 'libby@example.com' },
     });
@@ -578,14 +578,14 @@ describe('owner invite HTTP routes', () => {
     const cookies = await loginAdmin();
     const created = await app.inject({
       method: 'POST',
-      url: '/api/admin/organizations',
+      url: '/admin-api/organizations',
       cookies,
       payload: { name: 'Garden Club', ownerEmail: 'pending-signup@example.com' },
     });
     const orgId = created.json<{ organization: { id: string } }>().organization.id;
     const memberInvite = await app.inject({
       method: 'POST',
-      url: `/api/admin/organizations/${orgId}/invitations`,
+      url: `/admin-api/organizations/${orgId}/invitations`,
       cookies,
       payload: { role: 'member' },
     });
@@ -607,14 +607,14 @@ describe('owner invite HTTP routes', () => {
     const cookies = await loginAdmin();
     const created = await app.inject({
       method: 'POST',
-      url: '/api/admin/organizations',
+      url: '/admin-api/organizations',
       cookies,
       payload: { name: 'Garden Club', ownerEmail: 'pending-used@example.com' },
     });
     const orgId = created.json<{ organization: { id: string } }>().organization.id;
     const memberInvite = await app.inject({
       method: 'POST',
-      url: `/api/admin/organizations/${orgId}/invitations`,
+      url: `/admin-api/organizations/${orgId}/invitations`,
       cookies,
       payload: { role: 'member' },
     });
@@ -684,7 +684,7 @@ describe('owner invite HTTP routes', () => {
 
     const login = await timedApp.inject({
       method: 'POST',
-      url: '/api/admin/login',
+      url: '/admin-api/login',
       payload: { password: TEST_ADMIN_PASSWORD },
     });
     const cookies = {
@@ -693,14 +693,14 @@ describe('owner invite HTTP routes', () => {
     };
     const created = await timedApp.inject({
       method: 'POST',
-      url: '/api/admin/organizations',
+      url: '/admin-api/organizations',
       cookies,
       payload: { name: 'Garden Club', ownerEmail: 'pending-expired@example.com' },
     });
     const orgId = created.json<{ organization: { id: string } }>().organization.id;
     const memberInvite = await timedApp.inject({
       method: 'POST',
-      url: `/api/admin/organizations/${orgId}/invitations`,
+      url: `/admin-api/organizations/${orgId}/invitations`,
       cookies,
       payload: { role: 'member' },
     });
@@ -820,7 +820,7 @@ describe('owner invite storage failures log the original cause', () => {
 
     const login = await failingApp.inject({
       method: 'POST',
-      url: '/api/admin/login',
+      url: '/admin-api/login',
       payload: { password: TEST_ADMIN_PASSWORD },
     });
     const cookies = {
@@ -829,13 +829,13 @@ describe('owner invite storage failures log the original cause', () => {
     };
     const created = await failingApp.inject({
       method: 'POST',
-      url: '/api/admin/organizations',
+      url: '/admin-api/organizations',
       cookies,
       payload: { name: 'Garden Club', ownerEmail: 'libby@example.com' },
     });
     const listed = await failingApp.inject({
       method: 'GET',
-      url: '/api/admin/organizations',
+      url: '/admin-api/organizations',
       cookies,
     });
     expect(listed.statusCode).toBe(500);
@@ -866,7 +866,7 @@ describe('owner invite storage failures log the original cause', () => {
 
     const issued = await failingApp.inject({
       method: 'POST',
-      url: `/api/admin/organizations/${UNKNOWN_ORG_ID}/owner-invitation`,
+      url: `/admin-api/organizations/${UNKNOWN_ORG_ID}/owner-invitation`,
       cookies,
       payload: { email: 'libby@example.com' },
     });

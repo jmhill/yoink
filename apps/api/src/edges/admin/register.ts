@@ -368,12 +368,11 @@ export const registerAdminRoutes = async (
     clientIpOf,
   } = deps;
 
-  // One bucket for both mounts. A limiter inside each mount would let one IP
-  // spend adminLoginMax on `/api/admin/login` and again on `/admin-api/login`.
+  // Login uses one limiter on the only admin mount.
   const enforceAdminLoginLimit = sharedAdminLoginLimit(app, rateLimitConfig, clientIpOf);
 
   const mountSurface = async (
-    root: '/api/admin' | '/admin-api',
+    root: '/admin-api',
     logBuild: boolean,
     enforceLoginLimit: typeof enforceAdminLoginLimit
   ) => {
@@ -757,7 +756,5 @@ export const registerAdminRoutes = async (
   });
   };
 
-  // `/api/admin` stays until M6.5. The admin app uses `/admin-api`.
-  await mountSurface('/api/admin', false, enforceAdminLoginLimit);
   await mountSurface('/admin-api', true, enforceAdminLoginLimit);
 };

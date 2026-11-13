@@ -618,9 +618,9 @@ Task management's principal lookup, member ids, and user name, notes' actor list
 - **Do:**
   - Add `packages/api-contracts/src/admin/` and `edges/admin/` with admin-session auth, mounted at `/admin-api/`.
   - The admin app sends `X-Yoink-Build`.
-  - Update `apps/admin/vite.config.ts`'s dev proxy (it currently proxies `/api/admin`) and the SPA fallback.
+  - Update `apps/admin/vite.config.ts`'s dev proxy and the SPA fallback.
   - Move every admin screen.
-- **Accept:** admin acceptance tests pass, and the admin app makes no `/api/admin/...` calls.
+- **Accept:** admin acceptance tests pass, and the admin app calls `/admin-api`.
 
 ### M6.5 Remove client-only legacy routes
 
@@ -630,13 +630,13 @@ Task management's principal lookup, member ids, and user name, notes' actor list
 - **Do:** delete each `edges/legacy/<area>` once the inventory shows no callers, and once the expand/contract window has passed (ADR §8.2: 14 days of production logs with no requests from `X-Yoink-Build` values that use the legacy routes). Justin set that on 2026-11-10 at 8:12pm CT, as recorded in [#291](https://github.com/jmhill/yoink/issues/291) and [#292](https://github.com/jmhill/yoink/issues/292). Admin uses the same 14 days until Justin shortens it.
 - **Accept:** `edges/legacy/` is gone.
 
-### M6.6 Remove `/api/admin/...` from the dev proxy and docs
+### M6.6 Remove the retired admin prefix from the dev proxy and docs
 
-**Execution:** `M6.6`. [#293](https://github.com/jmhill/yoink/issues/293).
+**Execution:** `M6.6`. [#293](https://github.com/jmhill/yoink/issues/293). In review. This part does not mark M6.6 Done.
 
-- **Depends on:** M6.4, M6.5
-- **Do:** clean up leftover references in Vite configs, docs and the acceptance drivers.
-- **Accept:** nothing in the repo references `/api/admin`.
+- **Depends on:** M6.4, M6.5-admin
+- **Do:** clean leftover references in Vite configs, docs, and the acceptance drivers. Drop the compatibility mount with them. `edges/legacy/` stays for M6.5.
+- **Accept:** a repository search for the retired admin prefix is empty. Admin traffic is on `/admin-api`.
 
 ---
 
@@ -681,7 +681,7 @@ Task management's principal lookup, member ids, and user name, notes' actor list
 
 `POST /test-api/review-fixture/backdate` sets `projects.created_at`, `projects.last_changed_at`, and `change_log.occurred_at` for one project so Review can seed a quiet row without sleeping. `POST /test-api/review-fixture/finish-task` sets `tasks.completed_at` and `completed_by` so a done-list week can be seeded. Create and complete stamp `clock.now()`. A process-wide fake clock would move every parallel e2e test. No authed command sets those timestamps.
 
-`POST /test-api/ownerless-workspace` saves an organization with no owner, and optionally a personal membership. Admin `POST /api/admin/organizations` always creates an owner invitation. The access service's `createOrganization(name)` is not an HTTP command. Exposing it would let an admin create an ownerless workspace in production. `POST /test-api/expire-invitation` sets one invite's `expiresAt` to `2020-01-01` while sibling invites stay valid. Invitation create sets a future expiry from the clock. `POST /test-api/assign-owner-keeping-invite` inserts an owner membership and leaves the pending owner invite. The product assign-owner path revokes that invite. Using it would change the acceptance scenario that asserts the invite is still there.
+`POST /test-api/ownerless-workspace` saves an organization with no owner, and optionally a personal membership. Admin `POST /admin-api/organizations` always creates an owner invitation. The access service's `createOrganization(name)` is not an HTTP command. Exposing it would let an admin create an ownerless workspace in production. `POST /test-api/expire-invitation` sets one invite's `expiresAt` to `2020-01-01` while sibling invites stay valid. Invitation create sets a future expiry from the clock. `POST /test-api/assign-owner-keeping-invite` inserts an owner membership and leaves the pending owner invite. The product assign-owner path revokes that invite. Using it would change the acceptance scenario that asserts the invite is still there.
 
 The e2e database is a Docker volume. The harness cannot seed it through the unit of work. Replacing any of these routes needs a new product command or a shared clock. Neither is in this task.
 
@@ -875,7 +875,7 @@ The logical dependencies plus the serialization edges were checked together. The
 | `M6.4` | `M5.12` | — | Done (#359, `07fd98d3`, Trunk [42739846940](https://github.com/jmhill/yoink/actions/runs/42739846940)). | None. | [#290](https://github.com/jmhill/yoink/issues/290) |
 | `M6.5-web` | `M6.3-process`, `M6.3-tasks-lists`, `M6.3-work`, `M6.3-project-page`, `M6.3-notes`, `M6.3-review`, `M6.3-history`, `M6.3-settings`, `M6.3-auth` | — | Gated | (a) Production logs show no requests from `X-Yoink-Build` values that use the legacy web routes, for at least 14 days. Justin set that window on 2026-11-10 at 8:12pm CT, as recorded in [#291](https://github.com/jmhill/yoink/issues/291) and [#292](https://github.com/jmhill/yoink/issues/292). (b) Justin's explicit approval on #291. Green CI is not enough. | [#291](https://github.com/jmhill/yoink/issues/291) |
 | `M6.5-admin` | `M6.4` | — | Gated | (a) Production logs show no requests from `X-Yoink-Build` values that use the legacy admin routes, for at least 14 days. Justin set that window on 2026-11-10 at 8:12pm CT, as recorded in [#291](https://github.com/jmhill/yoink/issues/291) and [#292](https://github.com/jmhill/yoink/issues/292). Admin may later be shortened only by Justin. (b) Justin's explicit approval on #292. Green CI is not enough. | [#292](https://github.com/jmhill/yoink/issues/292) |
-| `M6.6` | `M6.4`, `M6.5-admin` | — | Not started | None. | [#293](https://github.com/jmhill/yoink/issues/293) |
+| `M6.6` | `M6.4`, `M6.5-admin` | — | In review | The admin edge is one `/admin-api` mount. The dev proxy, docs, and acceptance HTTP driver use it. `edges/legacy/` stays for M6.5-admin. `composition-root.ts` does not change. `app.ts` drops the comment that named the removed mount. This part does not mark M6.6 Done. | [#293](https://github.com/jmhill/yoink/issues/293) |
 | `M7.1` | `OPENAPI-V1`, `M6.1`, `M6.3-process`, `M6.3-tasks-lists`, `M6.3-work`, `M6.3-project-page`, `M6.3-notes`, `M6.3-review`, `M6.3-history`, `M6.3-settings`, `M6.3-auth`, `M6.4` | — | Not started | Justin chooses the Sunset date, at least 90 days out, before headers advertise it. No outreach. OPENAPI-V1 is done ([#334](https://github.com/jmhill/yoink/pull/334), `30f08e333c45e7e7292955fa877c702fbef6374a`). | [#294](https://github.com/jmhill/yoink/issues/294) |
 | `M7.2` | `M7.1` | — | Gated | (a) ADR §9: the sunset date has passed, the alias has had no calls for 30 days, and any remaining token owner has been contacted. (b) Justin's explicit approval on #295. Green CI is not enough. | [#295](https://github.com/jmhill/yoink/issues/295) |
 | `M7.3` | `M7.2` | — | Not started | External gate: PLAN 7.7c is done, plus M7.2. Do not perform 7.7c here. | [#296](https://github.com/jmhill/yoink/issues/296) |

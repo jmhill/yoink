@@ -145,7 +145,7 @@ describe('public token list policy', () => {
 
     const login = await app.inject({
       method: 'POST',
-      url: '/api/admin/login',
+      url: '/admin-api/login',
       payload: { password: TEST_ADMIN_PASSWORD },
     });
     expect(login.statusCode).toBe(200);
@@ -155,7 +155,7 @@ describe('public token list policy', () => {
 
     const coworker = await app.inject({
       method: 'POST',
-      url: `/api/admin/organizations/${TEST_ORG_ID}/users`,
+      url: `/admin-api/organizations/${TEST_ORG_ID}/users`,
       cookies: admin,
       payload: { email: 'coworker-token-list@example.com', role: 'member' },
     });
@@ -163,7 +163,7 @@ describe('public token list policy', () => {
     const coworkerUserId = coworker.json<{ id: string }>().id;
     const coworkerToken = await app.inject({
       method: 'POST',
-      url: `/api/admin/organizations/${TEST_ORG_ID}/tokens`,
+      url: `/admin-api/organizations/${TEST_ORG_ID}/tokens`,
       cookies: admin,
       payload: { userId: coworkerUserId, name: 'Coworker' },
     });
@@ -174,7 +174,7 @@ describe('public token list policy', () => {
 
     const otherOrg = await app.inject({
       method: 'POST',
-      url: '/api/admin/organizations',
+      url: '/admin-api/organizations',
       cookies: admin,
       payload: { name: 'Other token org', ownerEmail: 'pending-token-list@example.com' },
     });
@@ -182,7 +182,7 @@ describe('public token list policy', () => {
     const otherOrgId = otherOrg.json<{ organization: { id: string } }>().organization.id;
     const outsider = await app.inject({
       method: 'POST',
-      url: `/api/admin/organizations/${otherOrgId}/users`,
+      url: `/admin-api/organizations/${otherOrgId}/users`,
       cookies: admin,
       payload: { email: 'outsider-token-list@example.com', role: 'member' },
     });
@@ -190,7 +190,7 @@ describe('public token list policy', () => {
     const outsiderUserId = outsider.json<{ id: string }>().id;
     const outsiderToken = await app.inject({
       method: 'POST',
-      url: `/api/admin/organizations/${otherOrgId}/tokens`,
+      url: `/admin-api/organizations/${otherOrgId}/tokens`,
       cookies: admin,
       payload: { userId: outsiderUserId, name: 'Outsider' },
     });

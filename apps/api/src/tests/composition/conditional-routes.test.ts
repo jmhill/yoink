@@ -8,24 +8,24 @@ import {
 
 describe('Conditional Route Registration', () => {
   describe('Admin routes', () => {
-    it('registers /api/admin/* when admin config provided', async () => {
+    it('registers /admin-api/* when admin config provided', async () => {
       const app = await createTestAppWithAdmin();
 
       const response = await app.inject({
         method: 'POST',
-        url: '/api/admin/login',
+        url: '/admin-api/login',
         payload: { password: TEST_ADMIN_PASSWORD },
       });
 
       expect(response.statusCode).toBe(200);
     });
 
-    it('returns 404 for /api/admin/* when admin config missing', async () => {
+    it('returns 404 for /admin-api/* when admin config missing', async () => {
       const app = await createTestApp();
 
       const response = await app.inject({
         method: 'POST',
-        url: '/api/admin/login',
+        url: '/admin-api/login',
         payload: { password: TEST_ADMIN_PASSWORD },
       });
 

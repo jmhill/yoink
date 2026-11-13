@@ -32,25 +32,25 @@ done
 echo -e "${GREEN}API is healthy${NC}"
 
 # Login to admin and extract cookie
-COOKIE=$(curl -s -X POST http://localhost:3333/api/admin/login \
+COOKIE=$(curl -s -X POST http://localhost:3333/admin-api/login \
   -H "Content-Type: application/json" \
   -d '{"password":"test-admin-password"}' \
   -c - | grep admin_session | awk '{print $7}')
 
 # Create org
-ORG_ID=$(curl -s -X POST http://localhost:3333/api/admin/organizations \
+ORG_ID=$(curl -s -X POST http://localhost:3333/admin-api/organizations \
   -H "Content-Type: application/json" \
   -H "Cookie: admin_session=$COOKIE" \
   -d '{"name":"Local Preview"}' | jq -r '.id')
 
 # Create user
-USER_ID=$(curl -s -X POST "http://localhost:3333/api/admin/organizations/${ORG_ID}/users" \
+USER_ID=$(curl -s -X POST "http://localhost:3333/admin-api/organizations/${ORG_ID}/users" \
   -H "Content-Type: application/json" \
   -H "Cookie: admin_session=$COOKIE" \
   -d '{"email":"preview@local.test","name":"Preview User"}' | jq -r '.id')
 
 # Create token
-TOKEN=$(curl -s -X POST "http://localhost:3333/api/admin/users/${USER_ID}/tokens" \
+TOKEN=$(curl -s -X POST "http://localhost:3333/admin-api/users/${USER_ID}/tokens" \
   -H "Content-Type: application/json" \
   -H "Cookie: admin_session=$COOKIE" \
   -d '{"name":"Preview Token"}' | jq -r '.rawToken')

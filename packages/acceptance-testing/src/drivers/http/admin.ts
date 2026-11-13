@@ -27,7 +27,7 @@ export const createHttpAdmin = (
   password: string
 ): Admin => ({
   async login(): Promise<void> {
-    const response = await client.post('/api/admin/login', { password });
+    const response = await client.post('/admin-api/login', { password });
     if (response.statusCode === 401) {
       throw new UnauthorizedError('Invalid admin password');
     }
@@ -37,11 +37,11 @@ export const createHttpAdmin = (
   },
 
   async logout(): Promise<void> {
-    await client.post('/api/admin/logout', {});
+    await client.post('/admin-api/logout', {});
   },
 
   async isLoggedIn(): Promise<boolean> {
-    const response = await client.get('/api/admin/session');
+    const response = await client.get('/admin-api/session');
     if (response.statusCode === 401) {
       return false;
     }
@@ -56,7 +56,7 @@ export const createHttpAdmin = (
     const ownerEmail =
       options?.ownerEmail ??
       `unused-owner-${Date.now()}-${Math.random().toString(36).slice(2, 10)}@example.invalid`;
-    const response = await client.post('/api/admin/organizations', { name, ownerEmail });
+    const response = await client.post('/admin-api/organizations', { name, ownerEmail });
     if (response.statusCode === 401) {
       throw new UnauthorizedError();
     }
@@ -71,7 +71,7 @@ export const createHttpAdmin = (
     email: string
   ): Promise<IssueOwnerInvitationResult> {
     const response = await client.post(
-      `/api/admin/organizations/${organizationId}/owner-invitation`,
+      `/admin-api/organizations/${organizationId}/owner-invitation`,
       { email }
     );
     if (response.statusCode === 401) {
@@ -92,7 +92,7 @@ export const createHttpAdmin = (
 
   async getOwnerInvitation(organizationId: string): Promise<OwnerInvitation | null> {
     const response = await client.get(
-      `/api/admin/organizations/${organizationId}/owner-invitation`
+      `/admin-api/organizations/${organizationId}/owner-invitation`
     );
     if (response.statusCode === 401) {
       throw new UnauthorizedError();
@@ -108,7 +108,7 @@ export const createHttpAdmin = (
 
   async getOwnerInvitationDetails(organizationId: string): Promise<OwnerInvitationDetails> {
     const response = await client.get(
-      `/api/admin/organizations/${organizationId}/owner-invitation`
+      `/admin-api/organizations/${organizationId}/owner-invitation`
     );
     if (response.statusCode === 401) {
       throw new UnauthorizedError();
@@ -166,7 +166,7 @@ export const createHttpAdmin = (
   },
 
   async listOrganizations(): Promise<WorkspaceListItem[]> {
-    const response = await client.get('/api/admin/organizations');
+    const response = await client.get('/admin-api/organizations');
     if (response.statusCode === 401) {
       throw new UnauthorizedError();
     }
@@ -174,7 +174,7 @@ export const createHttpAdmin = (
   },
 
   async getOrganization(id: string): Promise<Organization> {
-    const response = await client.get(`/api/admin/organizations/${id}`);
+    const response = await client.get(`/admin-api/organizations/${id}`);
     if (response.statusCode === 401) {
       throw new UnauthorizedError();
     }
@@ -185,7 +185,7 @@ export const createHttpAdmin = (
   },
 
   async renameOrganization(id: string, newName: string): Promise<Organization> {
-    const response = await client.patch(`/api/admin/organizations/${id}`, {
+    const response = await client.patch(`/admin-api/organizations/${id}`, {
       name: newName,
     });
     if (response.statusCode === 401) {
@@ -205,7 +205,7 @@ export const createHttpAdmin = (
     email: string,
     options?: { role?: 'admin' | 'member'; kind?: 'human' | 'agent'; name?: string }
   ): Promise<User> {
-    const response = await client.post(`/api/admin/organizations/${organizationId}/users`, {
+    const response = await client.post(`/admin-api/organizations/${organizationId}/users`, {
       email,
       ...(options?.role !== undefined ? { role: options.role } : {}),
       ...(options?.kind !== undefined ? { kind: options.kind } : {}),
@@ -226,7 +226,7 @@ export const createHttpAdmin = (
 
   async listUsers(organizationId: string): Promise<User[]> {
     const response = await client.get(
-      `/api/admin/organizations/${organizationId}/users`
+      `/admin-api/organizations/${organizationId}/users`
     );
     if (response.statusCode === 401) {
       throw new UnauthorizedError();
@@ -235,7 +235,7 @@ export const createHttpAdmin = (
   },
 
   async setOrganizationOwner(organizationId: string, userId: string): Promise<User> {
-    const response = await client.put(`/api/admin/organizations/${organizationId}/owner`, {
+    const response = await client.put(`/admin-api/organizations/${organizationId}/owner`, {
       userId,
     });
     if (response.statusCode === 401) {
@@ -260,7 +260,7 @@ export const createHttpAdmin = (
     role: 'admin' | 'member'
   ): Promise<User> {
     const response = await client.patch(
-      `/api/admin/organizations/${organizationId}/members/${userId}`,
+      `/admin-api/organizations/${organizationId}/members/${userId}`,
       { role }
     );
     if (response.statusCode === 401) {
@@ -280,7 +280,7 @@ export const createHttpAdmin = (
   },
 
   async getUser(id: string): Promise<User> {
-    const response = await client.get(`/api/admin/users/${id}`);
+    const response = await client.get(`/admin-api/users/${id}`);
     if (response.statusCode === 401) {
       throw new UnauthorizedError();
     }
@@ -291,7 +291,7 @@ export const createHttpAdmin = (
   },
 
   async updateUser(id: string, options: { name: string }): Promise<User> {
-    const response = await client.patch(`/api/admin/users/${id}`, { name: options.name });
+    const response = await client.patch(`/admin-api/users/${id}`, { name: options.name });
     if (response.statusCode === 401) {
       throw new UnauthorizedError();
     }
@@ -308,7 +308,7 @@ export const createHttpAdmin = (
     id: string,
     createdAt: string
   ): Promise<{ id: string; createdAt: string }> {
-    const response = await client.patch(`/api/admin/projects/${id}`, { createdAt });
+    const response = await client.patch(`/admin-api/projects/${id}`, { createdAt });
     if (response.statusCode === 401) {
       throw new UnauthorizedError();
     }
@@ -323,7 +323,7 @@ export const createHttpAdmin = (
 
   async createToken(organizationId: string, userId: string, name: string): Promise<CreateTokenResult> {
     const response = await client.post(
-      `/api/admin/organizations/${organizationId}/tokens`,
+      `/admin-api/organizations/${organizationId}/tokens`,
       { userId, name }
     );
     if (response.statusCode === 401) {
@@ -338,7 +338,7 @@ export const createHttpAdmin = (
 
   async listTokens(organizationId: string, userId: string): Promise<Token[]> {
     const response = await client.get(
-      `/api/admin/organizations/${organizationId}/tokens`
+      `/admin-api/organizations/${organizationId}/tokens`
     );
     if (response.statusCode === 401) {
       throw new UnauthorizedError();
@@ -349,7 +349,7 @@ export const createHttpAdmin = (
   },
 
   async revokeToken(tokenId: string): Promise<void> {
-    const response = await client.delete(`/api/admin/tokens/${tokenId}`);
+    const response = await client.delete(`/admin-api/tokens/${tokenId}`);
     if (response.statusCode === 401) {
       throw new UnauthorizedError();
     }
@@ -360,7 +360,7 @@ export const createHttpAdmin = (
 
   async createInvitation(organizationId: string, input?: CreateInvitationInput): Promise<Invitation> {
     const response = await client.post(
-      `/api/admin/organizations/${organizationId}/invitations`,
+      `/admin-api/organizations/${organizationId}/invitations`,
       {
         role: input?.role ?? 'member',
         email: input?.email,

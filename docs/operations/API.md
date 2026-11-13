@@ -832,7 +832,7 @@ Owner leave `409`s use message `Hand over ownership first.` and
 `OWNER_CANNOT_BE_REMOVED` `409` with `The owner can't be removed.` and no
 `handoverPath`. A bot as the new owner is
 `BOT_CANNOT_HAVE_PRIVILEGED_ROLE` with `A bot can't be the owner.` — same
-copy as admin `PUT /api/admin/organizations/:id/owner`. A target who is
+copy as admin `PUT /admin-api/organizations/:id/owner`. A target who is
 not already a member is `The new owner has to be a member first.` Storage failure
 is `500` `Couldn't hand over ownership. Try again.`
 
@@ -909,7 +909,7 @@ membership events.
 
 ## List workspaces (admin)
 
-`GET /api/admin/organizations` returns every workspace, personal ones
+`GET /admin-api/organizations` returns every workspace, personal ones
 included, newest first. Response `{ organizations }` where each item is
 `{ id, name, createdAt, personal, ownerStatus }`. `ownerStatus` is a
 discriminated union:
@@ -935,7 +935,7 @@ Both 500s are logged with the original error.
 
 ## Create a workspace (admin)
 
-`POST /api/admin/organizations` `{ "name", "ownerEmail" }`. Owner email
+`POST /admin-api/organizations` `{ "name", "ownerEmail" }`. Owner email
 is required. Capitals and surrounding spaces are ignored. Existing
 account becomes owner in the same save; otherwise an owner invite is
 issued (7 days, role `owner`). Response `201`
@@ -952,7 +952,7 @@ Refusal order: validation, look up the account, bot check, decide.
 
 ## Owner invite (admin)
 
-`POST /api/admin/organizations/:id/owner-invitation` `{ "email" }` issues
+`POST /admin-api/organizations/:id/owner-invitation` `{ "email" }` issues
 or replaces the pending owner invite (New link, Use a different email,
 Create owner invite). An existing account becomes owner in the same save
 and the old invite is marked replaced. `GET` the same path returns

@@ -200,7 +200,7 @@ describe('public API v1 contracts', () => {
       'POST /api/organizations/{organizationId}/agents',
       'POST /api/organizations/{organizationId}/members/{userId}/token',
       'GET /api/health',
-      'POST /api/admin/login',
+      'POST /admin-api/login',
       'POST /api/auth/login/options',
       'POST /api/invitations',
       'POST /api/organizations/switch',

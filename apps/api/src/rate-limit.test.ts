@@ -324,7 +324,7 @@ describe('General API rate limit', () => {
     expect((await health(app)).statusCode).toBe(429);
   });
 
-  it('counts /api/admin/login and /admin-api/login against one limit', async () => {
+  it('limits /admin-api/login per client IP', async () => {
     app = await startApp(
       { ...tightUserLimit, globalMax: 100, adminLoginMax: 2 },
       { viaFly: true }
@@ -338,8 +338,8 @@ describe('General API rate limit', () => {
         payload: { password: 'wrong-password' },
       });
 
-    expect((await attempt('/api/admin/login', '198.51.100.10')).statusCode).toBe(401);
-    expect((await attempt('/api/admin/login', '198.51.100.10')).statusCode).toBe(401);
+    expect((await attempt('/admin-api/login', '198.51.100.10')).statusCode).toBe(401);
+    expect((await attempt('/admin-api/login', '198.51.100.10')).statusCode).toBe(401);
 
     const blocked = await attempt('/admin-api/login', '198.51.100.10');
     expect(blocked.statusCode).toBe(429);
@@ -354,7 +354,7 @@ describe('General API rate limit', () => {
     for (let i = 0; i < 5; i += 1) {
       await app.inject({
         method: 'POST',
-        url: '/api/admin/login',
+        url: '/admin-api/login',
         headers: { 'x-forwarded-for': `203.0.113.${i + 1}` },
         payload: { password: 'wrong-password' },
       });
@@ -362,7 +362,7 @@ describe('General API rate limit', () => {
 
     const response = await app.inject({
       method: 'POST',
-      url: '/api/admin/login',
+      url: '/admin-api/login',
       headers: {
         'x-forwarded-for': '203.0.113.99',
         'fly-client-ip': '198.51.100.10',

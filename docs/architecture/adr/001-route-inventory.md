@@ -63,7 +63,7 @@ No contract `path:`. Admin-session fixtures use `createAdminSessionMiddleware`. 
 
 ## Client-only
 
-ADR §9: admin (`/api/admin/...`), plus session, passkey, signup, and invitation flows used by the web app, are never aliased into v1. Organization settings are the same group: plan M3.3 names them. The four session-only mutations at the end of this section are included because `requireWebSessionPerson` already refuses a bearer token. Their middleware stays combined. The refusal body stays as it is.
+ADR §9: admin (`/admin-api/...`), plus session, passkey, signup, and invitation flows used by the web app, are never aliased into v1. Organization settings are the same group: plan M3.3 names them. The four session-only mutations at the end of this section are included because `requireWebSessionPerson` already refuses a bearer token. Their middleware stays combined. The refusal body stays as it is.
 
 ### Admin
 
@@ -71,26 +71,26 @@ Mounted only when `deps.admin` is set. Login and logout do not run the admin-ses
 
 | Method and path | Current file | Owning area | Auth | Callers | Classification | Notes |
 |---|---|---|---|---|---|---|
-| POST /api/admin/login | edges/legacy/admin/admin-routes.ts | admin | none | admin, tests | client-only | |
-| POST /api/admin/logout | edges/legacy/admin/admin-routes.ts | admin | none | admin, tests | client-only | |
-| GET /api/admin/session | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
-| GET /api/admin/organizations | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
-| POST /api/admin/organizations | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
-| POST /api/admin/organizations/{id}/owner-invitation | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
-| GET /api/admin/organizations/{id}/owner-invitation | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
-| GET /api/admin/organizations/{id} | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
-| PATCH /api/admin/organizations/{id} | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
-| GET /api/admin/organizations/{organizationId}/users | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
-| POST /api/admin/organizations/{organizationId}/users | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
-| PUT /api/admin/organizations/{id}/owner | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
-| PATCH /api/admin/organizations/{id}/members/{userId} | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
-| GET /api/admin/users/{id} | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
-| PATCH /api/admin/users/{id} | edges/legacy/admin/admin-routes.ts | admin | admin session | tests | client-only | No call in `apps/admin`. Acceptance admin driver patches the display name. |
-| PATCH /api/admin/projects/{id} | edges/legacy/admin/admin-routes.ts | admin | admin session | tests | client-only | Contract summary: back-date `createdAt` for history-start fixtures. Path is `/api/admin/...`, so §9 keeps it client-only. No admin UI caller. |
-| GET /api/admin/organizations/{organizationId}/tokens | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
-| POST /api/admin/organizations/{organizationId}/tokens | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
-| DELETE /api/admin/tokens/{id} | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
-| POST /api/admin/organizations/{organizationId}/invitations | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
+| POST /admin-api/login | edges/legacy/admin/admin-routes.ts | admin | none | admin, tests | client-only | |
+| POST /admin-api/logout | edges/legacy/admin/admin-routes.ts | admin | none | admin, tests | client-only | |
+| GET /admin-api/session | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
+| GET /admin-api/organizations | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
+| POST /admin-api/organizations | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
+| POST /admin-api/organizations/{id}/owner-invitation | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
+| GET /admin-api/organizations/{id}/owner-invitation | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
+| GET /admin-api/organizations/{id} | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
+| PATCH /admin-api/organizations/{id} | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
+| GET /admin-api/organizations/{organizationId}/users | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
+| POST /admin-api/organizations/{organizationId}/users | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
+| PUT /admin-api/organizations/{id}/owner | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
+| PATCH /admin-api/organizations/{id}/members/{userId} | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
+| GET /admin-api/users/{id} | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
+| PATCH /admin-api/users/{id} | edges/legacy/admin/admin-routes.ts | admin | admin session | tests | client-only | No call in `apps/admin`. Acceptance admin driver patches the display name. |
+| PATCH /admin-api/projects/{id} | edges/legacy/admin/admin-routes.ts | admin | admin session | tests | client-only | Contract summary: back-date `createdAt` for history-start fixtures. Path is `/admin-api/...`, so §9 keeps it client-only. No admin UI caller. |
+| GET /admin-api/organizations/{organizationId}/tokens | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
+| POST /admin-api/organizations/{organizationId}/tokens | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
+| DELETE /admin-api/tokens/{id} | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
+| POST /admin-api/organizations/{organizationId}/invitations | edges/legacy/admin/admin-routes.ts | admin | admin session | admin, tests | client-only | |
 
 ### Session, passkey, and signup
 

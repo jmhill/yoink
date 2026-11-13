@@ -57,7 +57,7 @@ describe('Security Features', () => {
     it('allows successful login attempts within rate limit', async () => {
       const response = await app.inject({
         method: 'POST',
-        url: '/api/admin/login',
+        url: '/admin-api/login',
         payload: { password: 'test-admin-password' },
       });
 
@@ -69,7 +69,7 @@ describe('Security Features', () => {
       for (let i = 0; i < 5; i++) {
         await app.inject({
           method: 'POST',
-          url: '/api/admin/login',
+          url: '/admin-api/login',
           payload: { password: 'wrong-password' },
         });
       }
@@ -77,7 +77,7 @@ describe('Security Features', () => {
       // 6th attempt should be rate limited
       const response = await app.inject({
         method: 'POST',
-        url: '/api/admin/login',
+        url: '/admin-api/login',
         payload: { password: 'wrong-password' },
       });
 
@@ -149,7 +149,7 @@ describe('Security Features', () => {
       for (let i = 0; i < 10; i++) {
         const response = await appWithNoRateLimit.inject({
           method: 'POST',
-          url: '/api/admin/login',
+          url: '/admin-api/login',
           payload: { password: 'wrong-password' },
         });
         // Should get 401 (wrong password), not 429 (rate limited)

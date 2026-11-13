@@ -51,6 +51,10 @@ mirror.gcr.io/moby/buildkit:buildx-stable-1@sha256:…
 Bump the digest the same way against
 `https://mirror.gcr.io/v2/moby/buildkit/manifests/buildx-stable-1`.
 
+## Failure artifacts
+
+On a failed Quality or E2E job, the Actions run uploads `unit-failure-diagnostics`, `e2e-failure-diagnostics`, `e2e-vitest-failure-diagnostics`, and `e2e-api-logs`. They are kept for 7 days. How to read them is in [Testing: Failure diagnostics](../testing/TESTING.md#failure-diagnostics).
+
 ## Other Docker Hub pulls
 
 `scripts/download-prod-db.sh` (local ops, not CI) pulls Litestream from

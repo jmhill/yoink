@@ -5,6 +5,7 @@ import {
   sessionStorageError,
   type SessionStorageError,
 } from '../domain/auth-errors.js';
+import { registerFailureState } from '../../platform/testing/failure-state.js';
 
 export type FakeUserSessionStoreOptions = {
   shouldFailOnSave?: boolean;
@@ -18,6 +19,7 @@ export const createFakeUserSessionStore = (
   options: FakeUserSessionStoreOptions = {}
 ): UserSessionStore & { getAll(): UserSession[] } => {
   const sessions: UserSession[] = [...(options.initialSessions ?? [])];
+  registerFailureState('fakeUserSessionStore', () => sessions.map((session) => ({ ...session })));
 
   return {
     /** Test helper to get all stored sessions */

@@ -22,6 +22,14 @@ import { createHttpHealth } from '../http/health.js';
 import { createPlaywrightActor, createPlaywrightAnonymousActor } from './actor.js';
 import { displayNameFromEmail } from '../../dsl/display-name.js';
 import { SignupPage, VirtualAuthenticator } from './page-objects.js';
+import {
+  attachObservedContext,
+  discardPassingDiagnostics,
+  noteActor,
+  noteTestStart,
+  observedContextOptions,
+  saveFailureDiagnostics,
+} from './failure-diagnostics.js';
 
 type SignupSession = {
   user: { id: string };
@@ -129,6 +137,21 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
   // Track virtual authenticators per page for cleanup
   const pageAuthenticators = new Map<Page, { cdpSession: CDPSession; authenticator: VirtualAuthenticator }>();
 
+  const openActorContext = async (): Promise<BrowserContext> => {
+    if (!browser) {
+      throw new Error('Driver not initialized. Call setup() first.');
+    }
+    const context = await browser.newContext(
+      await observedContextOptions({
+        baseURL: config.baseUrl,
+        reducedMotion: 'reduce',
+      })
+    );
+    actorContexts.push(context);
+    await attachObservedContext(context);
+    return context;
+  };
+
   /**
    * Set up a virtual authenticator for a page.
    * This enables passkey testing via CDP WebAuthn API.
@@ -144,6 +167,11 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
   return {
     name: 'playwright',
     capabilities: ['playwright'],
+    beginFailureDiagnostics: () => {
+      noteTestStart();
+    },
+    saveFailureDiagnostics,
+    discardPassingDiagnostics,
 
     admin,
     health,
@@ -159,12 +187,7 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
         }
       };
 
-      // Create an isolated browser context for this actor (cookie isolation)
-      const context = await browser.newContext({
-        baseURL: config.baseUrl,
-        reducedMotion: 'reduce',
-      });
-      actorContexts.push(context);
+      const context = await openActorContext();
       debug('Created isolated browser context');
 
       // Create an isolated tenant for this actor (via HTTP admin API)
@@ -173,6 +196,7 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
       // Make email unique per actor to satisfy the global email uniqueness constraint
       const [localPart, domain] = email.split('@');
       const uniqueEmail = `${localPart}+${suffix}@${domain}`;
+      noteActor(uniqueEmail);
 
       debug(`Creating actor with email: ${uniqueEmail}`);
 
@@ -277,12 +301,7 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
         }
       };
 
-      // Create an isolated browser context for this actor (cookie isolation)
-      const context = await browser.newContext({
-        baseURL: config.baseUrl,
-        reducedMotion: 'reduce',
-      });
-      actorContexts.push(context);
+      const context = await openActorContext();
       debug('Created isolated browser context');
 
       // Make email unique per actor to satisfy the global email uniqueness constraint,
@@ -292,6 +311,7 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
       const uniqueEmail = options?.exactEmail
         ? email
         : `${localPart}+${suffix}@${domain}`;
+      noteActor(uniqueEmail);
       debug(`Creating actor with email: ${uniqueEmail}`);
 
       // Create a new page for this actor in their isolated context
@@ -378,11 +398,7 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
       const getPage = async (): Promise<Page> => {
         if (!page) {
           if (!context) {
-            context = await browser!.newContext({
-              baseURL: config.baseUrl,
-              reducedMotion: 'reduce',
-            });
-            actorContexts.push(context);
+            context = await openActorContext();
           }
           page = await context.newPage();
         }

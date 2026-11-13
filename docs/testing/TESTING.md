@@ -517,6 +517,26 @@ expect(await hasher.verify('password', hash)).toBe(true);
 
 ---
 
+## Failure diagnostics
+
+A failing test writes files and does not retry, lengthen a timeout, or change the result. Passing tests do no diagnostic file I/O. PR CI and Trunk upload the files on failure and keep them for 7 days.
+
+| Failure | Where it is written | CI artifact |
+| --- | --- | --- |
+| Playwright e2e | `packages/acceptance-tests/e2e-failure-diagnostics/<test>/` | `e2e-failure-diagnostics` |
+| API log for that run | `e2e-api-logs/api.log`, plus `api-log-window.log` inside the test folder | `e2e-api-logs` and the window in `e2e-failure-diagnostics` |
+| Vitest unit or e2e | `<package>/failure-diagnostics/<test>.json` | `unit-failure-diagnostics` (Quality) or `e2e-vitest-failure-diagnostics` (E2E) |
+
+Playwright folder:
+
+- `report.json` — test name, actor emails (the `Date.now` suffix is the actor seed), browser console, page errors, and network calls that failed or took at least 1s. `TEST_ADMIN_PASSWORD`, `ADMIN_PASSWORD`, `SESSION_SECRET`, and `WEBAUTHN_CHALLENGE_SECRET` are replaced with `[redacted:…]` before the file is written. Password fields are cleared before the screenshot.
+- `screenshot-*.png` — the viewport at failure. There is no trace zip and no video. Recording those for every context, then stopping them in `afterAll`, blew the 30s hook budget on passing suites and stretched the E2E step from 14m40s to 23m32s. Console, failed and slow network, the viewport, and the API window are enough to see a timeout, and they stay off the passing path.
+- `api-log-window.log` — API JSON lines from just before the test until just after, with the same secret redaction. A `"tokenHash"` or `"token_hash"` field is replaced with `[redacted:tokenHash]`. Each line has `time` (epoch ms), `reqId`, `method`, `route`, `statusCode`, and `responseTime`. `slow_request` is a request of at least 1s. `event_loop_lag` is `p99Ms` or `maxMs` of at least 500; a multi-second `maxMs` is a frozen loop. `write_gate_wait` is how long a write waited on the gate (`waitedMs`).
+
+Vitest JSON: test name, `durationMs` (through the failure, including `beforeEach`), `sequenceSeed` (`null` means shuffle is off), and `fakeStores` when the test built a fake organization, user, membership, session, or token store. Token hashes are omitted. The same summary is printed to the Quality log as `vitest_failure`.
+
+`YOINK_E2E_DIAGNOSTICS=0` turns the Playwright recording off. Leave it unset in CI.
+
 ## References
 
 - [Dave Farley - Acceptance Testing](https://www.youtube.com/watch?v=SXbhOqz5hYo) - 4-layer architecture source

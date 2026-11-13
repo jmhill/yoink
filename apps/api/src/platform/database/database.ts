@@ -58,19 +58,59 @@ type Release = () => void;
  * One libsql client is not safe for an open transaction beside `execute`.
  * The native binding segfaults when those overlap. This gate runs one turn
  * at a time on that client. A transaction holds its turn until `close`.
+ * A long wait on `write` or `client` is logged when the fixture server is up.
  */
-const createClientGate = (): {
+export const WRITE_GATE_WARN_MS = 50;
+
+type GateName = 'read' | 'write' | 'client';
+
+type FixtureEnv = {
+  YOINK_TEST_FIXTURES?: string;
+  VITEST?: string;
+};
+
+export const writeGateWaitWarning = (
+  env: FixtureEnv,
+  gate: GateName,
+  waitedMs: number
+): { msg: 'write_gate_wait'; gate: GateName; waitedMs: number } | undefined => {
+  if (env.VITEST === 'true' || env.YOINK_TEST_FIXTURES !== 'true') {
+    return undefined;
+  }
+  if (gate === 'read' || waitedMs < WRITE_GATE_WARN_MS) {
+    return undefined;
+  }
+  return { msg: 'write_gate_wait', gate, waitedMs };
+};
+
+const createClientGate = (
+  gate: GateName
+): {
   acquire: () => Promise<Release>;
   exclusive: <T>(run: () => Promise<T>) => Promise<T>;
 } => {
   let tail: Promise<void> = Promise.resolve();
 
   const acquire = (): Promise<Release> => {
+    const queuedAt = Date.now();
     let release: Release = () => undefined;
     const released = new Promise<void>((resolve) => {
       release = () => resolve();
     });
-    const turn = tail.then(() => release);
+    const turn = tail.then(() => {
+      const warning = writeGateWaitWarning(
+        {
+          YOINK_TEST_FIXTURES: process.env.YOINK_TEST_FIXTURES,
+          VITEST: process.env.VITEST,
+        },
+        gate,
+        Date.now() - queuedAt
+      );
+      if (warning) {
+        console.error(JSON.stringify({ ...warning, time: Date.now() }));
+      }
+      return release;
+    });
     tail = released;
     return turn;
   };
@@ -399,7 +439,7 @@ export const openDatabase = (
 
   if (config.type !== 'file') {
     const client = createClientFor(config, timeoutMs);
-    const gate = createClientGate();
+    const gate = createClientGate('client');
     return {
       database: databaseFrom(client, gate, call),
       client,
@@ -409,8 +449,8 @@ export const openDatabase = (
 
   const readClient = createClientFor(config, timeoutMs);
   const writeNative = createClientFor(config, timeoutMs);
-  const readGate = createClientGate();
-  const writeGate = createClientGate();
+  const readGate = createClientGate('read');
+  const writeGate = createClientGate('write');
   const database = databaseFrom(readClient, readGate, call, journalWal(readClient));
   const afterWriteGate = <T>(run: () => Promise<T>): Promise<T> => writeGate.exclusive(run);
   return {

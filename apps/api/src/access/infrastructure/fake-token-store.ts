@@ -2,6 +2,7 @@ import { okAsync, errAsync, type ResultAsync } from 'neverthrow';
 import type { ApiToken } from '../domain/api-token.js';
 import type { TokenStore, TokenWriteError } from '../domain/token-store.js';
 import { tokenStorageError, type TokenStorageError } from '../domain/auth-errors.js';
+import { registerFailureState } from '../../platform/testing/failure-state.js';
 
 export type FakeTokenStoreOptions = {
   shouldFailOnSave?: boolean;
@@ -15,6 +16,17 @@ export const createFakeTokenStore = (
   options: FakeTokenStoreOptions = {}
 ): TokenStore => {
   const tokens: ApiToken[] = [...(options.initialTokens ?? [])];
+  registerFailureState('fakeTokenStore', () =>
+    tokens.map((token) => ({
+      id: token.id,
+      userId: token.userId,
+      organizationId: token.organizationId,
+      name: token.name,
+      lastUsedAt: token.lastUsedAt,
+      createdAt: token.createdAt,
+      revokedAt: token.revokedAt,
+    }))
+  );
 
   const revokeInPlace = (id: string, revokedAt: string): void => {
     const token = tokens.find((candidate) => candidate.id === id);

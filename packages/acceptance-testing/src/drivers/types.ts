@@ -64,4 +64,13 @@ export type Driver = {
    * Clean up resources.
    */
   teardown(): Promise<void>;
+
+  /** Marks the start of a test so failure artifacts cover that window. */
+  beginFailureDiagnostics?: () => void;
+
+  /** Writes retain-on-failure artifacts. Must not change the test result. */
+  saveFailureDiagnostics?: (testName: string) => Promise<void>;
+
+  /** Drops in-memory buffers for a passing test. Does no file or trace I/O. */
+  discardPassingDiagnostics?: () => Promise<void>;
 };

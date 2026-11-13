@@ -13,7 +13,12 @@
     },
     "test": {
       "dependsOn": ["^build"],
-      "passThroughEnv": ["TEST_BASE_URL", "TEST_ADMIN_PASSWORD"]
+      "passThroughEnv": [
+        "TEST_BASE_URL",
+        "TEST_ADMIN_PASSWORD",
+        "YOINK_API_LOG",
+        "YOINK_E2E_DIAGNOSTICS"
+      ]
     },
     "dev": {
       "cache": false,

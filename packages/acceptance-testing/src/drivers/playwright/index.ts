@@ -29,8 +29,6 @@ import {
   noteTestStart,
   observedContextOptions,
   saveFailureDiagnostics,
-  settleDiagnosticVideos,
-  stopLeftoverTraces,
 } from './failure-diagnostics.js';
 
 type SignupSession = {
@@ -497,36 +495,30 @@ export const createPlaywrightDriver = (config: DriverConfig): Driver => {
     },
 
     async teardown(): Promise<void> {
-      try {
-        // Clean up virtual authenticators
-        for (const [page, { authenticator, cdpSession }] of pageAuthenticators) {
-          try {
-            await authenticator.teardown();
-            await cdpSession.detach();
-          } catch {
-            // Ignore errors during cleanup (page may already be closed)
-          }
-          pageAuthenticators.delete(page);
+      // Clean up virtual authenticators
+      for (const [page, { authenticator, cdpSession }] of pageAuthenticators) {
+        try {
+          await authenticator.teardown();
+          await cdpSession.detach();
+        } catch {
+          // Ignore errors during cleanup (page may already be closed)
         }
+        pageAuthenticators.delete(page);
+      }
 
-        await stopLeftoverTraces();
-
-        // Close all actor contexts
-        for (const context of actorContexts) {
-          try {
-            await context.close();
-          } catch {
-            // Ignore errors during cleanup
-          }
+      // Close all actor contexts
+      for (const context of actorContexts) {
+        try {
+          await context.close();
+        } catch {
+          // Ignore errors during cleanup
         }
-        actorContexts.length = 0;
+      }
+      actorContexts.length = 0;
 
-        if (browser) {
-          await browser.close();
-          browser = null;
-        }
-      } finally {
-        await settleDiagnosticVideos();
+      if (browser) {
+        await browser.close();
+        browser = null;
       }
     },
   };

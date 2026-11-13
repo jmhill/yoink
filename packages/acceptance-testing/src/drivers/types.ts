@@ -71,6 +71,6 @@ export type Driver = {
   /** Writes retain-on-failure artifacts. Must not change the test result. */
   saveFailureDiagnostics?: (testName: string) => Promise<void>;
 
-  /** Drops traces and video recorded for a passing test. */
+  /** Drops in-memory buffers for a passing test. Does no file or trace I/O. */
   discardPassingDiagnostics?: () => Promise<void>;
 };

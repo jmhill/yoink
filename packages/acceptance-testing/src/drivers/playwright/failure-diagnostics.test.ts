@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { sliceServerLog } from './failure-diagnostics.js';
+import { redactSecrets, sliceServerLog } from './failure-diagnostics.js';
 
 describe('API log window', () => {
   const roots: string[] = [];
@@ -42,5 +42,35 @@ describe('API log window', () => {
     await writeFile(join(root, 'api.log'), `${line}\n`);
     const text = await readFile(join(root, 'api.log'), 'utf8');
     expect(sliceServerLog(text, 0, 100)).toContain('write_gate_wait');
+  });
+
+  it('redacts admin, session, and WebAuthn secrets', () => {
+    const env = {
+      TEST_ADMIN_PASSWORD: 'test-admin-password',
+      ADMIN_PASSWORD: 'test-admin-password',
+      SESSION_SECRET: 'session-secret-value',
+      WEBAUTHN_CHALLENGE_SECRET: 'webauthn-challenge-value',
+    };
+    const raw = [
+      'filled test-admin-password',
+      'session-secret-value',
+      'webauthn-challenge-value',
+      'tokenHash stays out of this helper',
+    ].join('\n');
+    const redacted = redactSecrets(raw, env);
+    expect(redacted).not.toContain('test-admin-password');
+    expect(redacted).not.toContain('session-secret-value');
+    expect(redacted).not.toContain('webauthn-challenge-value');
+    expect(redacted).toMatch(/\[redacted:(TEST_)?ADMIN_PASSWORD\]/);
+    expect(redacted).toContain('tokenHash stays out of this helper');
+  });
+
+  it('redacts a tokenHash field without keeping the hash', () => {
+    const raw = '{"tokenHash":"fake-hash:valid-token","token_hash":"abc123","name":"agent"}';
+    const redacted = redactSecrets(raw, {});
+    expect(redacted).not.toContain('fake-hash:valid-token');
+    expect(redacted).not.toContain('abc123');
+    expect(redacted).toContain('[redacted:tokenHash]');
+    expect(redacted).toContain('"name":"agent"');
   });
 });

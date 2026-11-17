@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import Fastify from 'fastify';
 import { bootstrapApp, createInfrastructure } from '../composition-root.js';
-import { v1SuccessorPath } from '../edges/public-api/v1/alias-headers.js';
+import {
+  aliasRetirementHttpDates,
+  publicApiAliasRetirement,
+  v1SuccessorPath,
+} from '../edges/public-api/v1/alias-headers.js';
 import { publicApiV1Routes } from '../edges/public-api/v1/routes.js';
 import { registerJsonBodyParser } from '../edges/_shared/server/json-body.js';
 import { runMigrations } from '../platform/database/migrator.js';
@@ -15,6 +19,7 @@ import {
   testConfigWithWebAuthn,
 } from './helpers/test-app.js';
 
+const announced = aliasRetirementHttpDates(publicApiAliasRetirement);
 const session = { cookie: `${TEST_SESSION_COOKIE}=${TEST_SESSION_ID}` };
 const bearer = { authorization: `Bearer ${TEST_TOKEN}` };
 const secret = TEST_TOKEN.split(':')[1] ?? '';
@@ -41,8 +46,8 @@ describe('public API v1 on the bootstrapped app', () => {
       expect(alias.headers.link).toBe(
         `<${v1SuccessorPath(urlFor('/api', route.path))}>; rel="successor-version"`,
       );
-      expect(alias.headers.deprecation).toBeUndefined();
-      expect(alias.headers.sunset).toBeUndefined();
+      expect(alias.headers.deprecation).toBe(announced.deprecation);
+      expect(alias.headers.sunset).toBe(announced.sunset);
 
       const versioned = await app.inject({
         method: route.method,
@@ -95,8 +100,8 @@ describe('public API v1 on the bootstrapped app', () => {
     expect(aliasList.headers.link).toBe(
       '</api/v1/auth/tokens>; rel="successor-version"',
     );
-    expect(aliasList.headers.deprecation).toBeUndefined();
-    expect(aliasList.headers.sunset).toBeUndefined();
+    expect(aliasList.headers.deprecation).toBe(announced.deprecation);
+    expect(aliasList.headers.sunset).toBe(announced.sunset);
   });
 
   it('keeps health and token writes off the versioned router and off alias headers', async () => {
@@ -165,7 +170,8 @@ describe('public API v1 on the bootstrapped app', () => {
     expect(again.headers.link).toBe(
       `</api/v1/captures/${id}/process>; rel="successor-version"`,
     );
-    expect(again.headers.deprecation).toBeUndefined();
+    expect(again.headers.deprecation).toBe(announced.deprecation);
+    expect(again.headers.sunset).toBe(announced.sunset);
   });
 
   it('logs the version and alias without the bearer secret or a human token id', async () => {

@@ -16,7 +16,7 @@ export type ExtensionApiDependencies = {
 
 /**
  * Token-only capture create and list at `/extension-api/v1`.
- * Older installed builds stay on the `/api` alias. No sunset headers.
+ * Older installed builds stay on the `/api` alias. This edge sets no sunset headers.
  */
 export const registerExtensionApiV1 = async (
   app: FastifyInstance,

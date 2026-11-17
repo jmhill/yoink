@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { registerOrpcHealthRoutes } from './edges/ops/orpc-health-routes.js';
 import { registerExtensionApiV1 } from './edges/extension/v1/index.js';
 import { registerWebApi } from './edges/web/index.js';
-import { registerPublicApiV1 } from './edges/public-api/v1/index.js';
+import { publicApiAliasRetirement, registerPublicApiV1 } from './edges/public-api/v1/index.js';
 import { registerAdminRoutes, type AdminRoutesDependencies } from './edges/admin/index.js';
 import { registerAuthRoutes } from './edges/legacy/auth/auth-routes.js';
 import { registerInvitationRoutes, type InvitationRoutesDependencies } from './edges/legacy/invitation/invitation-routes.js';
@@ -238,6 +238,7 @@ export const createApp = async (deps: AppDependencies) => {
     tokenHandlers: deps.signup?.tokenHandlers,
     tokenAuth,
     aliasAuth: authMiddleware,
+    aliasRetirement: publicApiAliasRetirement,
   });
   // New extension builds. Older builds stay on the /api alias above.
   await registerExtensionApiV1(app, {

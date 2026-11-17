@@ -34,8 +34,9 @@ export type PublicApiV1Dependencies = CaptureEdgeDependencies &
     tokenAuth: PublicApiAuth;
     aliasAuth: PublicApiAuth;
     /**
-     * Omit in production until M7.1 records a real window. When set, the span
-     * must be at least 90 days and the alias adds `Deprecation` and `Sunset`.
+     * Production passes `publicApiAliasRetirement`. When set, the span must be
+     * at least 90 days and the alias adds `Deprecation` and `Sunset`.
+     * Omitting it leaves those two headers off. Canonical `/api/v1` never gets them.
      */
     aliasRetirement?: AliasRetirementWindow;
   };
@@ -44,7 +45,7 @@ export type PublicApiV1Dependencies = CaptureEdgeDependencies &
  * Mounts the frozen integration procedures at token-only `/api/v1` and at the
  * `/api` alias. `GET /auth/tokens` is included when `tokenHandlers` is set.
  * Token create, delete, mint, and reissue are not on this router.
- * Health is not on this router. `aliasRetirement` stays unset until M7.1.
+ * Health is not on this router. Production passes the M7.1 window.
  */
 export const registerPublicApiV1 = async (app: FastifyInstance, deps: PublicApiV1Dependencies): Promise<void> => {
   if (deps.aliasRetirement !== undefined) aliasRetirementHttpDates(deps.aliasRetirement);

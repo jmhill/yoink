@@ -4,12 +4,27 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 export const PUBLIC_API_ALIAS_MIN_WINDOW_MS = 90 * 24 * 60 * 60 * 1000;
 
 /**
- * A real retirement window. Production omits this until M7.1 records the date.
- * Passing one sets `Deprecation` and `Sunset`. It does not invent a date.
+ * A real retirement window. Passing one sets `Deprecation` and `Sunset`.
+ * It does not invent a date.
  */
 export type AliasRetirementWindow = {
   deprecation: Date;
   sunset: Date;
+};
+
+/**
+ * Justin chose the Sunset on 2026-11-17 at 12:07am CT.
+ * Deprecation is that instant in GMT (`Tue, 17 Nov 2026 06:07:00 GMT`).
+ * Sunset is midnight GMT on the day he named (`Mon, 01 Mar 2027 00:00:00 GMT`).
+ * The span is 103 days, 17 hours, and 53 minutes, which meets the 90-day minimum.
+ * The alias stays mounted until M7.2.
+ */
+export const PUBLIC_API_ALIAS_DEPRECATION = new Date('2026-11-17T06:07:00.000Z');
+export const PUBLIC_API_ALIAS_SUNSET = new Date('2027-03-01T00:00:00.000Z');
+
+export const publicApiAliasRetirement: AliasRetirementWindow = {
+  deprecation: PUBLIC_API_ALIAS_DEPRECATION,
+  sunset: PUBLIC_API_ALIAS_SUNSET,
 };
 
 /** `/api/captures/1?x=1` becomes `/api/v1/captures/1?x=1`. */
@@ -40,8 +55,8 @@ export const aliasRetirementHttpDates = (
 
 /**
  * Alias responses always name the v1 successor. `Deprecation` and `Sunset`
- * are set only when a window of at least 90 days was passed in. The unset
- * production path does not advertise a retirement date.
+ * are set only when a window of at least 90 days was passed in. Canonical
+ * `/api/v1` routes do not use this hook.
  */
 export const setAliasHeaders = (
   request: FastifyRequest,

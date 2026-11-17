@@ -5,6 +5,8 @@ A bad, missing, or revoked token is `401` `{ "message": "Invalid token" }`.
 A slow or failing database, or a hash comparison that fails, is `503`
 `{ "message": "Authentication is temporarily unavailable. Try again." }`
 with `Retry-After: 1`. Treat that `503` as “try again”; the token is still valid.
+
+Integration routes are also served at `/api/v1`. Alias responses (`/api/...` for those routes only) carry `Deprecation: Tue, 17 Nov 2026 06:07:00 GMT`, `Sunset: Mon, 01 Mar 2027 00:00:00 GMT`, and `Link: </api/v1/...>; rel="successor-version"`. Justin chose the Sunset on 2026-11-17 at 12:07am CT. Deprecation is that instant in GMT, 103 days, 17 hours, and 53 minutes before Sunset, which meets the 90-day minimum. `/api/v1`, `/api/health`, and client-only routes do not carry those headers. The alias stays until M7.2 ([#295](https://github.com/jmhill/yoink/issues/295)): the Sunset has passed, production shows 30 days without alias calls, and Justin approves removal. This announcement does not contact token owners.
 List endpoints never omit a page marker: every list response includes `hasMore`
 (boolean) and `nextCursor` (`string` or explicit `null` when the page is the
 last). They also include `total` (the matching row count).

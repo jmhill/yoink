@@ -1,6 +1,10 @@
 import { describe, expect, it, beforeAll, afterAll } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { bootstrapApp, createInfrastructure } from '../composition-root.js';
+import {
+  aliasRetirementHttpDates,
+  publicApiAliasRetirement,
+} from '../edges/public-api/v1/alias-headers.js';
 import { runMigrations } from '../platform/database/migrator.js';
 import { migrations } from '../platform/database/migrations.js';
 import type { Database } from '../platform/database/types.js';
@@ -239,12 +243,15 @@ describe('public token list policy', () => {
     const response = await app.inject({ method: 'GET', url, headers });
     expect(response.statusCode).toBe(200);
     if (alias) {
+      const announced = aliasRetirementHttpDates(publicApiAliasRetirement);
       expect(response.headers.link).toBe('</api/v1/auth/tokens>; rel="successor-version"');
+      expect(response.headers.deprecation).toBe(announced.deprecation);
+      expect(response.headers.sunset).toBe(announced.sunset);
     } else {
       expect(response.headers.link).toBeUndefined();
+      expect(response.headers.deprecation).toBeUndefined();
+      expect(response.headers.sunset).toBeUndefined();
     }
-    expect(response.headers.deprecation).toBeUndefined();
-    expect(response.headers.sunset).toBeUndefined();
 
     const stored = await loadTokens(database);
     const expected = metadataFor(stored, TEST_USER_ID, TEST_ORG_ID);

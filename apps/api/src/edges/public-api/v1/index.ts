@@ -1,6 +1,9 @@
 export {
+  PUBLIC_API_ALIAS_DEPRECATION,
   PUBLIC_API_ALIAS_MIN_WINDOW_MS,
+  PUBLIC_API_ALIAS_SUNSET,
   aliasRetirementHttpDates,
+  publicApiAliasRetirement,
   v1SuccessorPath,
   type AliasRetirementWindow,
 } from './alias-headers.js';

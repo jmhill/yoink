@@ -79,7 +79,58 @@ describe('request completed logs', () => {
       url: '/health',
       statusCode: 204,
     });
+    expect(completed).not.toHaveProperty('tokenId');
     expect(typeof completed?.reqId).toBe('string');
+    await app.close();
+  });
+
+  it('puts the token id, build, and alias on a token request and leaves them off a session request', async () => {
+    const { lines, stream } = capture();
+    const app = Fastify({
+      logger: { level: 'info', stream },
+      logController: new LogController({ disableRequestLogging: true }),
+    });
+    registerRequestCompletedLog(app);
+    app.get('/api/v1/captures', async (request) => {
+      request.apiTokenId = '00000000-0000-4000-8000-000000000002';
+      request.publicApiAlias = false;
+      return { ok: true };
+    });
+    app.get('/web-api/auth/session', async () => ({ ok: true }));
+    await app.ready();
+
+    const tokenResponse = await app.inject({
+      method: 'GET',
+      url: '/api/v1/captures',
+      headers: { 'user-agent': 'YoinkTest/1.0', 'x-yoink-build': 'build-418' },
+    });
+    const sessionResponse = await app.inject({
+      method: 'GET',
+      url: '/web-api/auth/session',
+    });
+
+    expect(tokenResponse.statusCode).toBe(200);
+    expect(sessionResponse.statusCode).toBe(200);
+    const completed = entries(lines).filter((entry) => entry.msg === 'request completed');
+    expect(completed).toEqual([
+      expect.objectContaining({
+        method: 'GET',
+        url: '/api/v1/captures',
+        statusCode: 200,
+        userAgent: 'YoinkTest/1.0',
+        yoinkBuild: 'build-418',
+        alias: false,
+        tokenId: '00000000-0000-4000-8000-000000000002',
+      }),
+      expect.objectContaining({
+        method: 'GET',
+        url: '/web-api/auth/session',
+        statusCode: 200,
+      }),
+    ]);
+    expect(completed[1]).not.toHaveProperty('tokenId');
+    expect(completed[1]).not.toHaveProperty('alias');
+    expect(completed[1]).not.toHaveProperty('yoinkBuild');
     await app.close();
   });
 

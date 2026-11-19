@@ -50,6 +50,7 @@ export const createAuthMiddleware = (deps: AuthMiddlewareDependencies) => {
       principalKind: result.value.principalKind,
       actor: result.value.actor,
     };
+    request.apiTokenId = result.value.tokenId;
 
     // Bind auth context to request logger for all subsequent logs
     request.log = request.log.child({

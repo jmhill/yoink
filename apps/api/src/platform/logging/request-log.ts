@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
+import { callerLogFields, callerLogInputOf } from './request-caller.js';
 import { startEventLoopLagMonitor } from './event-loop-lag.js';
 
 const responseTimeOf = (elapsedTime: number): number =>
@@ -18,8 +19,10 @@ const routeOf = (request: FastifyRequest): string => request.routeOptions.url ??
 
 /**
  * Fastify's default completed line nests the status under `res` and omits the
- * URL. Sentry search needs both as top-level fields on `request completed`.
- * Test servers also record method, route, and a slow-request warning.
+ * URL. Sentry search needs url, method, and statusCode as top-level fields.
+ * A successful API-token check adds tokenId. X-Yoink-Build and the user agent
+ * are included when the request sent them. A public API route also adds alias.
+ * Test servers record route and a slow-request warning.
  */
 export const registerRequestCompletedLog = (app: FastifyInstance): void => {
   startEventLoopLagMonitor();
@@ -35,10 +38,9 @@ export const registerRequestCompletedLog = (app: FastifyInstance): void => {
     const route = routeOf(request);
     request.log.info(
       {
-        method,
+        ...callerLogFields(callerLogInputOf(request, reply.statusCode)),
         route,
         url: request.url,
-        statusCode: reply.statusCode,
         responseTime,
       },
       'request completed'

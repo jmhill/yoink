@@ -111,6 +111,7 @@ export const createCombinedAuthMiddleware = (
         principalKind: tokenResult.value.principalKind,
         actor: tokenResult.value.actor,
       };
+      request.apiTokenId = tokenResult.value.tokenId;
 
       // Bind auth context to request logger
       request.log = request.log.child({

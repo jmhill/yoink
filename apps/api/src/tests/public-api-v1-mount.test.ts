@@ -309,7 +309,11 @@ describe('public API v1 mount', () => {
     expect(v1TokenList.headers.deprecation).toBeUndefined();
     expect(v1TokenList.headers.sunset).toBeUndefined();
     expect(v1TokenList.headers.link).toBeUndefined();
-    expect(lines.slice(humanLogAt).join('\n')).not.toContain('"tokenId"');
+    const humanLog = lines.slice(humanLogAt).join('\n');
+    expect(humanLog).toContain(`"tokenId":"${token.id}"`);
+    expect(humanLog).not.toContain('valid-token');
+    expect(humanLog).not.toContain(`${token.id}:valid-token`);
+    expect(humanLog).not.toContain('fake-hash:');
 
     const aliasTokenList = await app.inject({
       method: 'GET',

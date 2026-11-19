@@ -22,6 +22,7 @@ import {
 const announced = aliasRetirementHttpDates(publicApiAliasRetirement);
 const session = { cookie: `${TEST_SESSION_COOKIE}=${TEST_SESSION_ID}` };
 const bearer = { authorization: `Bearer ${TEST_TOKEN}` };
+const tokenId = TEST_TOKEN.split(':')[0] ?? '';
 const secret = TEST_TOKEN.split(':')[1] ?? '';
 
 const urlFor = (prefix: '/api' | '/api/v1', path: string) =>
@@ -174,7 +175,7 @@ describe('public API v1 on the bootstrapped app', () => {
     expect(again.headers.sunset).toBe(announced.sunset);
   });
 
-  it('logs the version and alias without the bearer secret or a human token id', async () => {
+  it('logs the version, alias, and token id without the bearer secret', async () => {
     const lines: string[] = [];
     const http = Fastify({
       logger: {
@@ -202,7 +203,9 @@ describe('public API v1 on the bootstrapped app', () => {
     const log = lines.join('\n');
     expect(log).toContain('"apiVersion":"v1"');
     expect(log).toContain('"alias":false');
+    expect(log).toContain(`"tokenId":"${tokenId}"`);
     expect(log).not.toContain(secret);
-    expect(log).not.toContain('"tokenId"');
+    expect(log).not.toContain(TEST_TOKEN);
+    expect(log).not.toContain('fake-hash:');
   });
 });

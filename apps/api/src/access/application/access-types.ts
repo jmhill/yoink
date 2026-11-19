@@ -24,6 +24,8 @@ export type AuthenticatedToken = {
   readonly organizationId: string;
   readonly userId: string;
   readonly principalKind: PrincipalKind;
+  /** The token's id. The secret and hash stay out of this value. */
+  readonly tokenId: string;
   readonly actor: Actor;
 };
 

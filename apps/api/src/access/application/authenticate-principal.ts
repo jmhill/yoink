@@ -30,6 +30,7 @@ export const authenticatedTokenFrom = (result: AuthResult): AuthenticatedToken =
     organizationId: result.organization.id,
     userId: result.user.id,
     principalKind,
+    tokenId: result.token.id,
     actor: actorFromToken(result.token, principalKind),
   };
 };

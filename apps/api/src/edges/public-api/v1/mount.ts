@@ -3,7 +3,11 @@ import type { FastifyInstance } from 'fastify';
 import type { OrpcHttpContext } from '../../_shared/orpc/http-context.js';
 import type { AliasRetirementWindow } from './alias-headers.js';
 import { dispatchPublicApi, type PublicApiPrefix } from './dispatch.js';
-import { bindTokenId, publicApiRequestLog, type PublicApiAuth } from './log-context.js';
+import {
+  logPublicApiRequest,
+  markPublicApiRequest,
+  type PublicApiAuth,
+} from './log-context.js';
 
 export type PublicApiMethod = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
 
@@ -24,8 +28,9 @@ const mountOne = (
   app.route({
     method: typeof route.method === 'string' ? route.method : [...route.method],
     url: `${prefix}${route.path}`,
-    onRequest: publicApiRequestLog(alias, window),
-    preHandler: [auth, bindTokenId],
+    onRequest: markPublicApiRequest(alias, window),
+    preHandler: auth,
+    onResponse: logPublicApiRequest,
     handler: async (request, reply) => dispatchPublicApi(handler, request, reply, prefix),
   });
 };
